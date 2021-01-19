@@ -3,7 +3,6 @@
 #include <Adafruit_STMPE610.h>
 
 #include "Program.h"
-#include "Snake.h"
 
 #define STMPE_CS 0
 #define STMPE_SDI 0
@@ -29,6 +28,13 @@
 #define BTN_B_PIN 33
 #define BTN_C_PIN 25
 #define BTN_D_PIN 26
+
+#define LT_JOY_X 0
+#define LT_JOY_Y 0
+#define RT_JOY_X 0
+#define RT_JOY_Y 0
+#define LT_TRIGGER 0
+#define RT_TRIGGER 0
 
 using namespace program;
 using namespace io;
@@ -60,21 +66,28 @@ void setup() {
     pinMode(BTN_D_PIN, INPUT);  // d
 
     // button state ISR
-    attachInterrupt(digitalPinToInterrupt(BTN_UP_PIN), [](){ application->setButtonState(Buttons::Up, digitalRead(BTN_UP_PIN)); }, CHANGE);
-    attachInterrupt(digitalPinToInterrupt(BTN_DN_PIN), [](){ application->setButtonState(Buttons::Down, digitalRead(BTN_DN_PIN)); }, CHANGE);
-    attachInterrupt(digitalPinToInterrupt(BTN_LT_PIN), [](){ application->setButtonState(Buttons::Left, digitalRead(BTN_LT_PIN)); }, CHANGE);
-    attachInterrupt(digitalPinToInterrupt(BTN_RT_PIN), [](){ application->setButtonState(Buttons::Right, digitalRead(BTN_RT_PIN)); }, CHANGE);
-    attachInterrupt(digitalPinToInterrupt(BTN_A_PIN), [](){ application->setButtonState(Buttons::A, digitalRead(BTN_A_PIN)); }, CHANGE);
-    attachInterrupt(digitalPinToInterrupt(BTN_B_PIN), [](){ application->setButtonState(Buttons::B, digitalRead(BTN_B_PIN)); }, CHANGE);
-    attachInterrupt(digitalPinToInterrupt(BTN_C_PIN), [](){ application->setButtonState(Buttons::C, digitalRead(BTN_C_PIN)); }, CHANGE);
-    attachInterrupt(digitalPinToInterrupt(BTN_D_PIN), [](){ application->setButtonState(Buttons::D, digitalRead(BTN_D_PIN)); }, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(BTN_UP_PIN), [](){ application->setDigitalState(DigitalInputs::Up, digitalRead(BTN_UP_PIN)); }, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(BTN_DN_PIN), [](){ application->setDigitalState(DigitalInputs::Down, digitalRead(BTN_DN_PIN)); }, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(BTN_LT_PIN), [](){ application->setDigitalState(DigitalInputs::Left, digitalRead(BTN_LT_PIN)); }, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(BTN_RT_PIN), [](){ application->setDigitalState(DigitalInputs::Right, digitalRead(BTN_RT_PIN)); }, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(BTN_A_PIN), [](){ application->setDigitalState(DigitalInputs::A, digitalRead(BTN_A_PIN)); }, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(BTN_B_PIN), [](){ application->setDigitalState(DigitalInputs::B, digitalRead(BTN_B_PIN)); }, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(BTN_C_PIN), [](){ application->setDigitalState(DigitalInputs::C, digitalRead(BTN_C_PIN)); }, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(BTN_D_PIN), [](){ application->setDigitalState(DigitalInputs::D, digitalRead(BTN_D_PIN)); }, CHANGE);
 
     gfx.begin();
     gfx.setRotation(3); //480x320
 
-    application->run(new Snake());
+    application->run(new HUD());
 }
 
 void loop() {
+    application->setAnalogState(AnalogInputs::LeftJoyX, analogRead(LT_JOY_X));
+    application->setAnalogState(AnalogInputs::LeftJoyY, analogRead(LT_JOY_Y));
+    application->setAnalogState(AnalogInputs::RightJoyX, analogRead(RT_JOY_X));
+    application->setAnalogState(AnalogInputs::RightJoyY, analogRead(RT_JOY_Y));
+    application->setAnalogState(AnalogInputs::LeftTrigger, analogRead(LT_TRIGGER));
+    application->setAnalogState(AnalogInputs::RightTrigger, analogRead(RT_TRIGGER));
+
     application->update();
 }

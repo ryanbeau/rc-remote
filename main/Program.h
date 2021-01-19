@@ -16,7 +16,8 @@ class Application {
 
     void run(Screen* screen);
     void update();
-    void setButtonState(Buttons button, bool state);
+    void setDigitalState(DigitalInputs button, bool value);
+    void setAnalogState(AnalogInputs input, uint16_t value);
 
    private:
     Adafruit_GFX& _graphics;
@@ -25,10 +26,11 @@ class Application {
     unsigned long _prevMS;
     TouchState _touchState;
     volatile ButtonState _buttonStates[BTN_COUNT];
+    AnalogState _analogStates[ANALOG_COUNT];
 
     uint8_t updateMS();
     void updateButtonStates(uint8_t ms);
-    void updateTouchState();
+    void updateTouchState(uint8_t ms);
 };
 
 }  // namespace program

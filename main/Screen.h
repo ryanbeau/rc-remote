@@ -17,12 +17,12 @@ class Screen {
     virtual ~Screen() {}
     virtual void update(Adafruit_GFX& gfx, uint8_t ms) = 0;
 
-    virtual void onButtonDown(Buttons button) {}
-    virtual void onButtonPressed(Buttons button) {}
-    virtual void onButtonUp(Buttons button) {}
-    virtual void onTouchDown(uint16_t x, uint16_t y, uint8_t z) {}
-    virtual void onTouchPressed(uint16_t x, uint16_t y, uint8_t z) {}
-    virtual void onTouchUp(uint16_t x, uint16_t y, uint8_t z) {}
+    virtual void onButtonDown(DigitalInputs button) {}
+    virtual void onButtonPressed(DigitalInputs button) {}
+    virtual void onButtonUp(DigitalInputs button) {}
+    virtual void onTouchDown(TS_Point p) {}
+    virtual void onTouchPressed(TS_Point p) {}
+    virtual void onTouchUp(TS_Point p) {}
 };
 
 class HUD : public Screen {

@@ -2,14 +2,26 @@
 #define RC_IO_H
 
 #include <Arduino.h>
+#include <Adafruit_STMPE610.h>
 #include <stdint.h>
 
+#define ANALOG_COUNT 6
 #define BTN_COUNT 8
-#define DEBOUNCE_DELAY_MS 50
+#define INPUT_DEBOUNCE_MS 50
+#define TOUCH_DEBOUNCE_MS 50
 
 namespace io {
 
-enum class Buttons : uint8_t {
+enum class AnalogInputs : uint8_t {
+    LeftJoyX,
+    LeftJoyY,
+    RightJoyX,
+    RightJoyY,
+    LeftTrigger,
+    RightTrigger,
+};
+
+enum class DigitalInputs : uint8_t {
     Up,
     Down,
     Right,
@@ -27,6 +39,10 @@ enum class ButtonStates : uint8_t {
     Up,
 };
 
+class AnalogState {
+
+};
+
 class ButtonState {
    public:
     void setState(bool pressed) volatile;
@@ -37,16 +53,27 @@ class ButtonState {
 
    private:
     volatile bool _pressed = false;
-    volatile ButtonStates _state = ButtonStates::None;
     volatile int8_t _debounceDelay = 0;
+    ButtonStates _state = ButtonStates::None;
 };
 
 class TouchState {
    public:
-    void resetState();
-    void setState(uint16_t x, uint16_t y, uint8_t z);
+    void setPoint(TS_Point p);
+    void setState(bool pressed);
+    void updateState(uint8_t ms);
+    ButtonStates getState() {
+        return _state;
+    }
+    TS_Point getPoint() {
+        return _point;
+    }
+
    private:
     bool _pressed = false;
+    volatile int8_t _debounceDelay = 0;
+    ButtonStates _state = ButtonStates::None;
+    TS_Point _point = TS_Point(0, 0, 0);
 };
 
 }  // namespace io

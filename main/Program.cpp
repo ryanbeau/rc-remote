@@ -25,7 +25,7 @@ void Application::update() {
     uint8_t ms = updateMS();
 
     updateButtonStates(ms);
-    updateTouchState();
+    updateTouchState(ms);
 
     if (_screen) {
         _screen->update(_graphics, ms);
@@ -34,42 +34,60 @@ void Application::update() {
 
 void Application::updateButtonStates(uint8_t ms) {
     for (uint8_t i = 0; i < BTN_COUNT; i++) {
-        ButtonStates state = _buttonStates[i].getState();
+        ButtonStates prev = _buttonStates[i].getState();
         _buttonStates[i].updateState(ms);
+        ButtonStates state = _buttonStates[i].getState();
 
         // screen on-event
-        if (state != _buttonStates[i].getState() && _screen) {
+        if (prev != state && _screen) {
             switch (state) {
                 case ButtonStates::Down:
-                    _screen->onButtonDown(static_cast<Buttons>(i));
+                    _screen->onButtonDown(static_cast<DigitalInputs>(i));
                     break;
                 case ButtonStates::Pressed:
-                    _screen->onButtonPressed(static_cast<Buttons>(i));
+                    _screen->onButtonPressed(static_cast<DigitalInputs>(i));
                     break;
                 case ButtonStates::Up:
-                    _screen->onButtonUp(static_cast<Buttons>(i));
+                    _screen->onButtonUp(static_cast<DigitalInputs>(i));
                     break;
             }
         }
     }
 }
 
-void Application::updateTouchState() {
+void Application::updateTouchState(uint8_t ms) {
+    ButtonStates prev = _touchState.getState();
+
     if (_touch.touched()) {
-        uint16_t x, y;
-        uint8_t z;
-        while (!_touch.bufferEmpty()) {
-            _touch.readData(&x, &y, &z);
-        }
-        _touchState.setState(x, y, z);
-        _touch.writeRegister8(STMPE_INT_STA, 0xFF);  // reset all ints
+        _touchState.setPoint(_touch.getPoint());
+        _touchState.setState(true);
     } else {
-        _touchState.resetState();
+        _touchState.setState(false);
+    }
+    _touchState.updateState(ms);
+
+    ButtonStates state = _touchState.getState();
+    if (prev != state && _screen) {
+        switch (state) {
+            case ButtonStates::Down:
+                _screen->onTouchDown(_touchState.getPoint());
+                break;
+            case ButtonStates::Pressed:
+                _screen->onTouchPressed(_touchState.getPoint());
+                break;
+            case ButtonStates::Up:
+                _screen->onTouchUp(_touchState.getPoint());
+                break;
+        }
     }
 }
 
-void Application::setButtonState(Buttons button, bool state) {
-    _buttonStates[static_cast<uint8_t>(button)].setState(state);
+void Application::setDigitalState(DigitalInputs button, bool value) {
+    _buttonStates[static_cast<uint8_t>(button)].setState(value);
+}
+
+void Application::setAnalogState(AnalogInputs input, uint16_t value) {
+
 }
 
 }  // namespace program

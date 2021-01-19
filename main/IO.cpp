@@ -2,18 +2,49 @@
 
 namespace io {
 
-void ButtonState::setState(bool on) volatile {
-    if (on && _state != ButtonStates::Pressed && _state != ButtonStates::Up) {
-        _debounceDelay = DEBOUNCE_DELAY_MS;
+void ButtonState::setState(bool pressed) volatile {
+    if (pressed && _state != ButtonStates::Pressed && _state != ButtonStates::Up) {
+        _debounceDelay = INPUT_DEBOUNCE_MS;
     }
-    _pressed = on;
+    _pressed = pressed;
 }
 
 void ButtonState::updateState(uint8_t ms) volatile {
+    switch (_state) {
+        case ButtonStates::None:
+            if (_debounceDelay > 0) {
+                _state = ButtonStates::Down;
+            }
+            break;
+        case ButtonStates::Down:
+            _state = ButtonStates::Pressed;
+            break;
+        case ButtonStates::Pressed:
+            if (!_pressed && _debounceDelay <= 0) {
+                _state = ButtonStates::Up;
+            }
+            break;
+        case ButtonStates::Up:
+            _state = ButtonStates::None;
+            break;
+    }
     if (_debounceDelay > 0) {
         _debounceDelay -= ms;
     }
+}
 
+void TouchState::setPoint(TS_Point p) {
+    _point = p;
+}
+
+void TouchState::setState(bool pressed) {
+    if (_state != ButtonStates::Pressed && _state != ButtonStates::Up) {
+        _debounceDelay = TOUCH_DEBOUNCE_MS;
+    }
+    _pressed = pressed;
+}
+
+void TouchState::updateState(uint8_t ms) {
     switch (_state) {
         case ButtonStates::None:
             if (_pressed) {
@@ -32,13 +63,9 @@ void ButtonState::updateState(uint8_t ms) volatile {
             _state = ButtonStates::None;
             break;
     }
-}
-
-void TouchState::setState(uint16_t x, uint16_t y, uint8_t z) {
-}
-
-void TouchState::resetState() {
-    _pressed = false;
+    if (_debounceDelay > 0) {
+        _debounceDelay -= ms;
+    }
 }
 
 }  // namespace io
