@@ -2,6 +2,10 @@
 
 namespace io {
 
+void AnalogState::setState(uint16_t value) volatile {
+    _value = value;
+}
+
 void ButtonState::setState(bool pressed) volatile {
     if (pressed && _state != ButtonStates::Pressed && _state != ButtonStates::Up) {
         _debounceDelay = INPUT_DEBOUNCE_MS;

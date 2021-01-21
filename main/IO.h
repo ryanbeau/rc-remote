@@ -12,6 +12,10 @@
 
 namespace io {
 
+struct Packet {
+
+};
+
 enum class AnalogInputs : uint8_t {
     LeftJoyX,
     LeftJoyY,
@@ -40,7 +44,11 @@ enum class ButtonStates : uint8_t {
 };
 
 class AnalogState {
+   public:
+    void setState(uint16_t value) volatile;
 
+   private:
+    volatile int16_t _value;
 };
 
 class ButtonState {
@@ -71,7 +79,7 @@ class TouchState {
 
    private:
     bool _pressed = false;
-    volatile int8_t _debounceDelay = 0;
+    int8_t _debounceDelay = 0;
     ButtonStates _state = ButtonStates::None;
     TS_Point _point = TS_Point(0, 0, 0);
 };

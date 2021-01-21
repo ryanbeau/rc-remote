@@ -2,13 +2,30 @@
 
 namespace program {
 
-Application::Application(Adafruit_GFX& gfx, Adafruit_STMPE610& touch) :
+Application::Application(Adafruit_GFX& gfx, Adafruit_STMPE610& touch, RF24& radio) :
     _graphics(gfx),
-    _touch(touch) {
+    _touch(touch),
+    _radio(radio) {
 }
 
 void Application::run(Screen* screen) {
     _screen = screen;
+}
+
+void Application::writePacket() {
+    _radio.stopListening();
+
+    Packet packet; // TODO: build packet
+    _radio.write(&packet, sizeof(packet));
+
+    _radio.startListening();
+}
+
+void Application::readPacket() {
+    if (_radio.available()) {
+        Packet packet;
+        _radio.read(&packet, sizeof(packet));
+    }
 }
 
 uint8_t Application::updateMS() {
@@ -87,7 +104,7 @@ void Application::setDigitalState(DigitalInputs button, bool value) {
 }
 
 void Application::setAnalogState(AnalogInputs input, uint16_t value) {
-
+    _analogStates[static_cast<uint8_t>(input)].setState(value);
 }
 
 }  // namespace program
