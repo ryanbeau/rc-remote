@@ -12,8 +12,15 @@
 
 namespace io {
 
-struct Packet {
-
+struct __attribute__((__packed__)) Packet { // max 32 byte
+    int8_t leftJoyX;
+    int8_t leftJoyY;
+    int8_t rightJoyX;
+    int8_t rightJoyY;
+    uint8_t leftTrigger;
+    uint8_t rightTrigger;
+    uint8_t dPads;        // 4:left[Up,Dn,Rt,Lt]|4:right[Up,Dn,Rt,Lt]
+    uint8_t buttons;      // Laux|Raux|?|?|?|?
 };
 
 enum class AnalogInputs : uint8_t {

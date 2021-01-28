@@ -11,10 +11,13 @@ using namespace io;
 
 namespace program {
 
+const byte addressDiscovery[6] = "RC-00";
+
 class Application {
    public:
     Application(Adafruit_GFX& gfx, Adafruit_STMPE610& touch, RF24& radio);
 
+    void setup(byte* mac);
     void run(Screen* screen);
     void update();
     void writePacket();
@@ -27,10 +30,12 @@ class Application {
     Adafruit_STMPE610& _touch;
     RF24 _radio;
     Screen* _screen;
-    unsigned long _prevMS;
+    uint64_t _prevMS;
+    byte* _mac;
     TouchState _touchState;
     volatile ButtonState _buttonStates[BTN_COUNT];
     volatile AnalogState _analogStates[ANALOG_COUNT];
+    //const byte pipes[6];
 
     uint8_t updateMS();
     void updateButtonStates(uint8_t ms);

@@ -8,6 +8,10 @@ Application::Application(Adafruit_GFX& gfx, Adafruit_STMPE610& touch, RF24& radi
     _radio(radio) {
 }
 
+void Application::setup(byte* mac) {
+    _mac = mac;
+}
+
 void Application::run(Screen* screen) {
     _screen = screen;
 }
@@ -15,16 +19,52 @@ void Application::run(Screen* screen) {
 void Application::writePacket() {
     _radio.stopListening();
 
-    Packet packet; // TODO: build packet
+    // TODO : write to specific pipe with retry and offset delay
+    //_radio.openWritingPipe(address);
+    //_radio.setRetries(delay, count);
+
+    Packet packet;  // TODO: build packet
     _radio.write(&packet, sizeof(packet));
+
+    loop();
+
+    // Discovery Message Example
+    // uint8    type|version     0-16|0-16
+    // byte*    name             "Tonky Tonk" 12
+    // uint8    color|icon       0-16|0-16
+    // byte[6]  MAC              00:0a:95:9d:68:16
+    // 
 
     _radio.startListening();
 }
 
 void Application::readPacket() {
-    if (_radio.available()) {
-        Packet packet;
-        _radio.read(&packet, sizeof(packet));
+    byte pipe = 0;
+    while (_radio.available(&pipe)) {
+        uint8_t size = _radio.getDynamicPayloadSize();
+        byte response[size];
+
+        _radio.read(&response, sizeof(response));
+
+        // pipe channel
+        if (pipe == 0x00) {  // 0 = discovery
+
+        } else { // paired device
+        
+        }
+
+        // version of message
+        uint8_t version = response[0] & 0x0F;  // right 4 bits
+
+        // type of message
+        switch (response[0] >> 4) { // left 4 bits
+            case 0x00:  //  0:0000 = is channel empty
+                break;
+            case 0x09:  //  9:1001 = setup
+                break;
+            case 0x0F:  // 15:1111 = operation
+                break;
+        }
     }
 }
 
