@@ -1,96 +1,53 @@
 #ifndef RC_IO_H
 #define RC_IO_H
 
-#include <Arduino.h>
 #include <Adafruit_STMPE610.h>
-#include <stdint.h>
+#include <Arduino.h>
 
-#define ANALOG_COUNT 6
-#define BTN_COUNT 8
-#define INPUT_DEBOUNCE_MS 50
-#define TOUCH_DEBOUNCE_MS 50
+#include "Config.h"
 
-namespace io {
-
-struct __attribute__((__packed__)) Packet { // max 32 byte
-    int8_t leftJoyX;
-    int8_t leftJoyY;
-    int8_t rightJoyX;
-    int8_t rightJoyY;
-    uint8_t leftTrigger;
-    uint8_t rightTrigger;
-    uint8_t dPads;        // 4:left[Up,Dn,Rt,Lt]|4:right[Up,Dn,Rt,Lt]
-    uint8_t buttons;      // Laux|Raux|?|?|?|?
+enum class Gamepad : uint8_t {
+    // analog
+    L_Joy_X   = L_JOY_X_PIN,
+    L_Joy_Y   = L_JOY_Y_PIN,
+    R_Joy_X   = R_JOY_X_PIN,
+    R_Joy_Y   = R_JOY_Y_PIN,
+    L_Trigger = L_TRIG_PIN,
+    R_Trigger = R_TRIG_PIN,
+    // digital
+    L_DPad_Up    = L_DPAD_UP_PIN,
+    L_DPad_Down  = L_DPAD_DN_PIN,
+    L_DPad_Right = L_DPAD_RT_PIN,
+    L_DPad_Left  = L_DPAD_LT_PIN,
+    R_DPad_Up    = R_DPAD_UP_PIN,
+    R_DPad_Down  = R_DPAD_DN_PIN,
+    R_DPad_Right = R_DPAD_RT_PIN,
+    R_DPad_Left  = R_DPAD_LT_PIN,
+    L_Aux        = L_AUX_BTN_PIN,
+    R_Aux        = R_AUX_BTN_PIN,
 };
 
-enum class AnalogInputs : uint8_t {
-    LeftJoyX,
-    LeftJoyY,
-    RightJoyX,
-    RightJoyY,
-    LeftTrigger,
-    RightTrigger,
-};
+typedef enum {
+    buttonDown,
+    buttonUp,
+    joystick,
+    trigger,
+} EventIO;
 
-enum class DigitalInputs : uint8_t {
-    Up,
-    Down,
-    Right,
-    Left,
-    A,
-    B,
-    C,
-    D,
-};
+typedef struct {
+    Gamepad input;
+    EventIO type;
+    union {
+        bool button;
+        int8_t joystick;
+        uint8_t trigger;
+    };
+} GamepadEvent;
 
-enum class ButtonStates : uint8_t {
-    None,
-    Down,
-    Pressed,
-    Up,
-};
+typedef struct {
+    
+} Payload;
 
-class AnalogState {
-   public:
-    void setState(uint16_t value) volatile;
-
-   private:
-    volatile int16_t _value;
-};
-
-class ButtonState {
-   public:
-    void setState(bool pressed) volatile;
-    void updateState(uint8_t ms) volatile;
-    ButtonStates getState() volatile {
-        return _state;
-    }
-
-   private:
-    volatile bool _pressed = false;
-    volatile int8_t _debounceDelay = 0;
-    ButtonStates _state = ButtonStates::None;
-};
-
-class TouchState {
-   public:
-    void setPoint(TS_Point p);
-    void setState(bool pressed);
-    void updateState(uint8_t ms);
-    ButtonStates getState() {
-        return _state;
-    }
-    TS_Point getPoint() {
-        return _point;
-    }
-
-   private:
-    bool _pressed = false;
-    int8_t _debounceDelay = 0;
-    ButtonStates _state = ButtonStates::None;
-    TS_Point _point = TS_Point(0, 0, 0);
-};
-
-}  // namespace io
+void ioInit();
 
 #endif
