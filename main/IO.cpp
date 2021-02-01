@@ -1,96 +1,127 @@
 #include "IO.h"
 
+#include <Adafruit_MCP23017.h>
 #include <RF24.h>
 
 #include "System.h"
 
-#define DIGITAL_AMT 10
+#define TOUCH_BIT 0x01
+#define RF_BIT 0x02
+#define MCP_BIT 0x04
+
+#define DIGITAL_AMT 12
 #define ANALOG_AMT 6
 
-#define OFFSET_INIT_JOY 0
-#define LIMIT_INIT_JOY 255
-
-#define OFFSET_INIT_TRIGGER 100
-#define LIMIT_INIT_TRIGGER 155
-
-bool initialized = false;
-static xQueueHandle inputQueue = NULL;
+#define INIT_ANALOG_MIN 0
+#define INIT_ANALOG_MID 2047
+#define INIT_ANALOG_MAX 4095
 
 const byte addressDiscovery[6] = "RC-00";
 
-Adafruit_STMPE610 touch = Adafruit_STMPE610(STMPE_CS_PIN, STMPE_SDI_PIN, STMPE_SDO_PIN, STMPE_SCK_PIN);
+Adafruit_HX8357 gfx = Adafruit_HX8357(TFT_CS_PIN, TFT_DC_PIN, TFT_MOSI_PIN, TFT_SCK_PIN, TFT_RST_PIN, TFT_MISO_PIN);
+Adafruit_STMPE610 touch = Adafruit_STMPE610(STMPE_CS_PIN);
 RF24 radio = RF24(RF_CE_PIN, RF_CS_PIN);
+Adafruit_MCP23017 mcp;
 
-typedef struct {
-    uint8_t inputPin;
-    bool value;
-} DigitalMap;
+xQueueHandle digitalInterruptQueue = NULL;
+static TaskHandle_t inputHandlingTask;
 
-static DigitalMap digitalMap[DIGITAL_AMT] = {
-    {static_cast<uint8_t>(Gamepad::L_DPad_Up), false},
-    {static_cast<uint8_t>(Gamepad::L_DPad_Down), false},
-    {static_cast<uint8_t>(Gamepad::L_DPad_Right), false},
-    {static_cast<uint8_t>(Gamepad::L_DPad_Left), false},
-    {static_cast<uint8_t>(Gamepad::R_DPad_Up), false},
-    {static_cast<uint8_t>(Gamepad::R_DPad_Down), false},
-    {static_cast<uint8_t>(Gamepad::R_DPad_Right), false},
-    {static_cast<uint8_t>(Gamepad::R_DPad_Left), false},
-    {static_cast<uint8_t>(Gamepad::L_Aux), false},
-    {static_cast<uint8_t>(Gamepad::R_Aux), false},
+DigitalMap digitalMap[DIGITAL_AMT] = {
+    {static_cast<uint8_t>(Gamepad::eLeft_DpadUp), false},
+    {static_cast<uint8_t>(Gamepad::eLeft_DpadDown), false},
+    {static_cast<uint8_t>(Gamepad::eLeft_DpadRight), false},
+    {static_cast<uint8_t>(Gamepad::eLeft_DpadLeft), false},
+    {static_cast<uint8_t>(Gamepad::eRight_DpadUp), false},
+    {static_cast<uint8_t>(Gamepad::eRight_DpadDown), false},
+    {static_cast<uint8_t>(Gamepad::eRight_DpadRight), false},
+    {static_cast<uint8_t>(Gamepad::eRight_DpadLeft), false},
+    {static_cast<uint8_t>(Gamepad::eLeft_Bumper), false},
+    {static_cast<uint8_t>(Gamepad::eRight_Bumper), false},
+    {static_cast<uint8_t>(Gamepad::eLeft_Aux), false},
+    {static_cast<uint8_t>(Gamepad::eRight_Aux), false},
 };
 
-typedef struct {
-    uint8_t inputPin;
-    uint16_t value;  // analogRead() returns 0 to 4095
-    uint16_t limit;
-    uint16_t offset;
-} AnalogMap;
-
-static AnalogMap analogMap[ANALOG_AMT] = {
-    {static_cast<uint8_t>(Gamepad::L_Joy_X), 0, LIMIT_INIT_JOY, OFFSET_INIT_JOY},
-    {static_cast<uint8_t>(Gamepad::L_Joy_Y), 0, LIMIT_INIT_JOY, OFFSET_INIT_JOY},
-    {static_cast<uint8_t>(Gamepad::R_Joy_X), 0, LIMIT_INIT_JOY, OFFSET_INIT_JOY},
-    {static_cast<uint8_t>(Gamepad::R_Joy_Y), 0, LIMIT_INIT_JOY, OFFSET_INIT_JOY},
-    {static_cast<uint8_t>(Gamepad::L_Trigger), 0, LIMIT_INIT_TRIGGER, OFFSET_INIT_TRIGGER},
-    {static_cast<uint8_t>(Gamepad::R_Trigger), 0, LIMIT_INIT_TRIGGER, OFFSET_INIT_TRIGGER},
+AnalogMap analogMap[ANALOG_AMT] = {
+    {static_cast<uint8_t>(Gamepad::eLeft_JoyX), INIT_ANALOG_MID, INIT_ANALOG_MIN, INIT_ANALOG_MAX, false},
+    {static_cast<uint8_t>(Gamepad::eLeft_JoyY), INIT_ANALOG_MID, INIT_ANALOG_MIN, INIT_ANALOG_MAX, false},
+    {static_cast<uint8_t>(Gamepad::eRight_JoyX), INIT_ANALOG_MID, INIT_ANALOG_MIN, INIT_ANALOG_MAX, true},
+    {static_cast<uint8_t>(Gamepad::eRight_JoyY), INIT_ANALOG_MID, INIT_ANALOG_MIN, INIT_ANALOG_MAX, true},
+    {static_cast<uint8_t>(Gamepad::eLeft_Trigger), INIT_ANALOG_MID, INIT_ANALOG_MIN, INIT_ANALOG_MAX, false},
+    {static_cast<uint8_t>(Gamepad::eRight_Trigger), INIT_ANALOG_MID, INIT_ANALOG_MIN, INIT_ANALOG_MAX, false},
 };
 
-void IRAM_ATTR isrHandler(void* arg) {
-    uint32_t pin = (uint32_t)arg;
-    xQueueSendFromISR(inputQueue, &pin, NULL);
+void handleDigitalEvent(DigitalMap* map) {
+    GamepadEvent ev;
+    ev.type = eEventButton;
+    ev.digital = map;
+
+    onGamepadEvent(&ev);
 }
 
-void inputRFTask(void* arg) {
-    const TickType_t xDelay = 50 / portTICK_PERIOD_MS;  // 50ms
+void IRAM_ATTR isrDigitalHandler(void* arg) {
+    uint32_t pin = (uint32_t)arg;
+    xQueueSendFromISR(digitalInterruptQueue, &pin, NULL);
+    portYIELD_FROM_ISR();
+}
 
-    uint8_t pipe;
+void IRAM_ATTR isrRFHandler() {
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    xTaskNotifyFromISR(inputHandlingTask, RF_BIT, eSetBits, &xHigherPriorityTaskWoken);
+    portYIELD_FROM_ISR();
+}
+
+void IRAM_ATTR isrTouchHandler() {
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    xTaskNotifyFromISR(inputHandlingTask, TOUCH_BIT, eSetBits, &xHigherPriorityTaskWoken);
+    portYIELD_FROM_ISR();
+}
+
+void IRAM_ATTR isrMCPHandler() {
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    xTaskNotifyFromISR(inputHandlingTask, MCP_BIT, eSetBits, &xHigherPriorityTaskWoken);
+    portYIELD_FROM_ISR();
+}
+
+void inputAnalogTask(void* arg) {
+    static const TickType_t xDelay = 50 / portTICK_PERIOD_MS;  // 50ms
+    static const float max = 255.0f;
+
+    uint16_t value;
+    Gamepad input;
+    GamepadEvent ev;
+
     while (1) {
         vTaskDelay(xDelay);
+        for (uint8_t i = 0; i < ANALOG_AMT; i++) {
+            value = analogRead(analogMap[i].inputPin); // range: 0 to 4095
 
-        while (radio.available(&pipe)) {
-            Payload payload;
-            radio.read(&payload, sizeof(payload));
+            input = static_cast<Gamepad>(analogMap[i].inputPin);
+            ev.type = input == Gamepad::eLeft_Trigger || input == Gamepad::eRight_Trigger ? eEventTrigger : eEventJoystick;
 
-            OnPayloadEvent(&payload);
+            if (ev.type == eEventTrigger) {
+                // TODO : handle trigger value
+                ev.analog = &analogMap[i];
+            } else {
+                // TODO : handle joystick value
+                ev.analog = &analogMap[i];
+            }
+
+            onGamepadEvent(&ev);
         }
     }
 }
 
 void inputDigitalTask(void* arg) {
     uint32_t pin;
-    GamepadEvent ev;
+    bool val;
 
     while (1) {
-        if (xQueueReceive(inputQueue, &pin, portMAX_DELAY)) {
+        if (xQueueReceive(digitalInterruptQueue, &pin, portMAX_DELAY)) {
+            val = digitalRead(pin);
             for (uint8_t i = 0; i < DIGITAL_AMT; i++) {
-                if (digitalMap[i].inputPin == pin) {
-                    digitalMap[i].value = digitalRead(pin);
-
-                    ev.type = digitalMap[i].value ? buttonDown : buttonUp;
-                    ev.input = static_cast<Gamepad>(pin);
-                    ev.button = digitalMap[i].value;
-
-                    OnGamepadEvent(&ev);
+                if (digitalMap[i].inputPin == pin && digitalMap[i].value != val) {
+                    digitalMap[i].value = val;
+                    handleDigitalEvent(&digitalMap[i]);
                     break;
                 }
             }
@@ -98,59 +129,105 @@ void inputDigitalTask(void* arg) {
     }
 }
 
-void inputAnalogTask(void* arg) {
-    const TickType_t xDelay = 50 / portTICK_PERIOD_MS;  // 50ms
-    uint16_t value;
-
-    while (1) {
-        vTaskDelay(xDelay);
-        for (uint8_t i = 0; i < ANALOG_AMT; i++) {
-            value = analogRead(analogMap[i].inputPin);
-            analogMap[i].value = value;
-        }
-    }
-}
-
-void inputTouchTask(void* arg) {
-    const TickType_t xDelay = 50 / portTICK_PERIOD_MS;  // 50ms
+void inputTask(void* arg) {
+    BaseType_t xResult;
+    uint32_t notifiedValue;
+    
     TS_Point point;
+    uint8_t pipe;
 
     while (1) {
-        vTaskDelay(xDelay);
-        if (touch.touched()) {
-            point = touch.getPoint();
-            OnTouchEvent(&point);
+        // wait to be notified of an interrupt
+        xResult = xTaskNotifyWait( pdFALSE, ULONG_MAX, &notifiedValue, portMAX_DELAY);
+
+        if (xResult == pdPASS) {
+            // Touch
+            if (notifiedValue & TOUCH_BIT) {
+                if (touch.touched()) {
+                    point = touch.getPoint();
+                    
+                    onTouchEvent(&point);
+                }
+            }
+
+            // RF
+            if (notifiedValue & RF_BIT) {
+                while (radio.available(&pipe)) {
+                    Payload payload;
+                    radio.read(&payload, sizeof(payload));
+
+                    onPayloadEvent(&payload);
+                }
+            }
+
+            // MCP port extender
+            if (notifiedValue & MCP_BIT) {
+                uint8_t pin = mcp.getLastInterruptPin();
+                bool value = mcp.getLastInterruptPinValue();
+                for (uint8_t i = 0; i < DIGITAL_AMT; i++) {
+                    if (digitalMap[i].inputPin == pin && digitalMap[i].value != value) {
+                        digitalMap[i].value = digitalRead(pin);
+                        
+                        handleDigitalEvent(&digitalMap[i]);
+                    }
+                }
+            }
         }
     }
 }
 
-void ioInit() {
+void initIO() {
+    static bool initialized = false;
+
     if (!initialized) {
+        // tft & graphics
+        ledcSetup(TFT_CH, TFT_FRQ, TFT_RES);
+        ledcAttachPin(TFT_BACKLIGHT_PIN, TFT_CH);
+        ledcWrite(TFT_CH, 255);
+
+        gfx.begin();
+        gfx.setRotation(3);
+
         // radio - RF24
         radio.begin();
         radio.setChannel(84);
         radio.openReadingPipe(0, addressDiscovery);  // open to discovery address
         radio.enableDynamicPayloads();
         radio.startListening();
+        pinMode(RF_IRQ_PIN, INPUT);
+        attachInterrupt(RF_IRQ_PIN, isrRFHandler, PULLDOWN);
 
         // touch - STMPE610
         touch.begin();
+        pinMode(STMPE_IRQ_PIN, INPUT);
+        attachInterrupt(STMPE_IRQ_PIN, isrTouchHandler, PULLDOWN);
+
+        // mcp port extender
+        mcp.begin(MCP_ADDRESS);
+        mcp.pinMode(MCP_A_IRQ_PIN, INPUT); //A
+        mcp.pullUp(MCP_A_IRQ_PIN, HIGH);
+        mcp.setupInterruptPin(MCP_A_IRQ_PIN, FALLING);
+        pinMode(MCP_A_IRQ_PIN, INPUT);
+        attachInterrupt(MCP_A_IRQ_PIN, isrMCPHandler, CHANGE);
+        mcp.pinMode(MCP_B_IRQ_PIN, INPUT); //B
+        mcp.pullUp(MCP_B_IRQ_PIN, HIGH);
+        mcp.setupInterruptPin(MCP_B_IRQ_PIN, FALLING);
+        pinMode(MCP_B_IRQ_PIN, INPUT);
+        attachInterrupt(MCP_B_IRQ_PIN, isrMCPHandler, CHANGE);
 
         // digital input
-        inputQueue = xQueueCreate(10, sizeof(uint8_t));
+        digitalInterruptQueue = xQueueCreate(10, sizeof(uint8_t));
         for (uint8_t i = 0; i < DIGITAL_AMT; i++) {
-            pinMode(digitalMap[i].inputPin, INPUT);
-            attachInterruptArg(digitalMap[i].inputPin, isrHandler, (void*)static_cast<uint32_t>(digitalMap[i].inputPin), CHANGE);
+            if (digitalMap[i].inputPin == L_AUX_BTN_PIN || digitalMap[i].inputPin == R_AUX_BTN_PIN) {
+                pinMode(digitalMap[i].inputPin, INPUT);
+                attachInterruptArg(digitalMap[i].inputPin, isrDigitalHandler, (void*)static_cast<uint32_t>(digitalMap[i].inputPin), CHANGE);
+            }
         }
 
-        // TODO : interrupt for RF
-        // TODO : interrupt for Touch
-
         // tasks
-        xTaskCreatePinnedToCore(&inputRFTask, "rfIO", 1500, NULL, 10, NULL, IO_CORE);
+        xTaskCreatePinnedToCore(&inputTask, "inputIO", 1500, NULL, 13, &inputHandlingTask, IO_CORE);
         xTaskCreatePinnedToCore(&inputDigitalTask, "digitalIO", 1500, NULL, 11, NULL, IO_CORE);
         xTaskCreatePinnedToCore(&inputAnalogTask, "analogIO", 1500, NULL, 12, NULL, IO_CORE);
-        xTaskCreatePinnedToCore(&inputTouchTask, "touchIO", 1500, NULL, 13, NULL, IO_CORE);
 
         initialized = true;
     }

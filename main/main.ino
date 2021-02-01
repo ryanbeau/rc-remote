@@ -1,19 +1,14 @@
-#include <Adafruit_HX8357.h>
 #include <Arduino.h>
-#include <WiFi.h>
 
-#include "Config.h"
-#include "IO.h"
-
-typedef void (*StateFunction_t)( void );
-
-StateFunction_t state;
+#include "System.h"
 
 void setup() {
-    //state = &setup;
-    ioInit();
+    initIO();
+
+    setScreen(new HUD());
 }
 
 void loop() {
-    state();
+    update();
+    // vTaskDelete(NULL); // Deletes this loop() and frees this task of priority 1
 }
