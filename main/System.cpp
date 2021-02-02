@@ -67,18 +67,18 @@ void HUD::update(uint8_t ms) {
                         valY = static_cast<uint8_t>(static_cast<float>(valY < 0 ? -valY : valY) / static_cast<float>(ANALOG_MID) * 36.0f);
                         gfx.fillRect(x + 48, y + 1 + (i * 60) + (i == 0 ? 36 - valY : 0), 2, valY, white);
                     }
+                }
 
-                    // trigger axis
-                    gfx.drawRect(x + 161 + (i * 38), y, 4, 62, darkgray);
-                    gfx.drawFastVLine(x + 162 + (i * 38), y + 1, 60, lightgray);
-                    gfx.drawFastVLine(x + 163 + (i * 38), y + 1, 60, midgray);
+                // trigger axis
+                gfx.drawRect(x + 161 + (j * 38), y, 4, 62, darkgray);
+                gfx.drawFastVLine(x + 162 + (j * 38), y + 1, 60, lightgray);
+                gfx.drawFastVLine(x + 163 + (j * 38), y + 1, 60, midgray);
 
-                    uint16_t val = analogRead(j == 0 ? L_TRIG_PIN : R_TRIG_PIN);
-                    if (val > ANALOG_MID + 34) {
-                        val -= ANALOG_MID;
-                        val = static_cast<uint8_t>(static_cast<float>(val) / static_cast<float>(ANALOG_MID) * 60.0f);
-                        gfx.fillRect(x + 162 + (i * 38), y + 1 + (60 - val), 2, val, white);
-                    }
+                uint16_t valTrig = analogRead(j == 0 ? L_TRIG_PIN : R_TRIG_PIN);
+                if (valTrig > ANALOG_MID + 34) {
+                    valTrig -= ANALOG_MID;
+                    valTrig = static_cast<uint8_t>(static_cast<float>(valTrig) / static_cast<float>(ANALOG_MID) * 60.0f);
+                    gfx.fillRect(x + 162 + (j * 38), y + 1 + (60 - valTrig), 2, valTrig, white);
                 }
             }
         }
