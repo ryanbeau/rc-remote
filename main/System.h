@@ -12,7 +12,7 @@ class Screen {
     virtual void onTouchEvent(TS_Point* point) {}
 
    protected:
-    uint8_t _updated;
+    uint8_t _updated = 255;
 };
 
 class HUD : public Screen {

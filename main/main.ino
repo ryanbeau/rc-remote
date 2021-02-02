@@ -7,7 +7,7 @@ void setup() {
     while (!Serial) {
         ;  // wait for serial port to connect. Needed for native USB
     }
-    
+
     initIO();
 
     setScreen(new HUD());

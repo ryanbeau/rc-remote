@@ -34,7 +34,6 @@
 #define R_TRIG_PIN 39
 
 // MCP23017 port expander
-#define MCP_ADDRESS 0x20
 #define MCP_A_IRQ_PIN 0
 #define MCP_B_IRQ_PIN 15
 
@@ -43,17 +42,17 @@
 #define R_AUX_BTN_PIN 17
 
 // note: below digital are using the MCP23017 port expander
-#define L_BUMPER_BTN_PIN 0
-#define R_BUMPER_BTN_PIN 8
+#define L_BUMPER_BTN_MCP_PIN 0
+#define R_BUMPER_BTN_MCP_PIN 8
 
-#define L_DPAD_UP_PIN 1
-#define L_DPAD_DN_PIN 2
-#define L_DPAD_RT_PIN 3
-#define L_DPAD_LT_PIN 4
+#define L_DPAD_UP_MCP_PIN 1
+#define L_DPAD_DN_MCP_PIN 2
+#define L_DPAD_RT_MCP_PIN 3
+#define L_DPAD_LT_MCP_PIN 4
 
-#define R_DPAD_UP_PIN 9
-#define R_DPAD_DN_PIN 10
-#define R_DPAD_RT_PIN 11
-#define R_DPAD_LT_PIN 12
+#define R_DPAD_UP_MCP_PIN 9
+#define R_DPAD_DN_MCP_PIN 10
+#define R_DPAD_RT_MCP_PIN 11
+#define R_DPAD_LT_MCP_PIN 12
 
 #endif

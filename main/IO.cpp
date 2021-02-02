@@ -12,10 +12,6 @@
 #define DIGITAL_AMT 12
 #define ANALOG_AMT 7
 
-#define ANALOG_MIN 0
-#define ANALOG_MID 2047
-#define ANALOG_MAX 4095
-
 const byte addressDiscovery[6] = "RC-00";
 
 Adafruit_HX8357 gfx = Adafruit_HX8357(TFT_CS_PIN, TFT_DC_PIN, TFT_RST_PIN);
@@ -52,9 +48,7 @@ AnalogMap analogMap[ANALOG_AMT] = {
 };
 
 void handleDigitalEvent(DigitalMap* map) {
-    GamepadEvent ev;
-    ev.type = eEventButton;
-    ev.digital = map;
+    GamepadEvent ev = {digital : map};
 
     onGamepadEvent(&ev);
 }
@@ -87,27 +81,16 @@ void inputAnalogTask(void* arg) {
     static const TickType_t xDelay = 50 / portTICK_PERIOD_MS;  // 50ms
     static const float max = 255.0f;
 
-    uint16_t value;
-    eGamepad input;
-    GamepadEvent ev;
-
     while (1) {
         vTaskDelay(xDelay);
         for (uint8_t i = 0; i < ANALOG_AMT; i++) {
-            value = analogRead(analogMap[i].inputPin); // range: 0 to 4095
+            analogMap[i].value = analogRead(analogMap[i].inputPin);  // range: 0 to 4095
 
-            input = analogMap[i].inputPin;
-            ev.type = input == eLeft_Trigger || input == eRight_Trigger ? eEventTrigger : eEventJoystick;
-
-            if (ev.type == eEventTrigger) {
+            if (analogMap[i].inputPin == eLeft_Trigger || analogMap[i].inputPin == eRight_Trigger) {
                 // TODO : handle trigger value
             } else {
                 // TODO : handle joystick value
             }
-
-            ev.analog = &analogMap[i];
-
-            onGamepadEvent(&ev);
         }
     }
 }
@@ -133,20 +116,20 @@ void inputDigitalTask(void* arg) {
 void inputTask(void* arg) {
     BaseType_t xResult;
     uint32_t notifiedValue;
-    
+
     TS_Point point;
     uint8_t pipe;
 
     while (1) {
         // wait to be notified of an interrupt
-        xResult = xTaskNotifyWait( pdFALSE, ULONG_MAX, &notifiedValue, portMAX_DELAY);
+        xResult = xTaskNotifyWait(pdFALSE, ULONG_MAX, &notifiedValue, portMAX_DELAY);
 
         if (xResult == pdPASS) {
             // Touch
             if (notifiedValue & TOUCH_BIT) {
                 if (touch.touched()) {
                     point = touch.getPoint();
-                    
+
                     onTouchEvent(&point);
                 }
             }
@@ -168,7 +151,7 @@ void inputTask(void* arg) {
                 for (uint8_t i = 0; i < DIGITAL_AMT; i++) {
                     if (digitalMap[i].inputPin == pin && digitalMap[i].value != value) {
                         digitalMap[i].value = digitalRead(pin);
-                        
+
                         handleDigitalEvent(&digitalMap[i]);
                     }
                 }
@@ -181,14 +164,12 @@ void initIO() {
     static bool initialized = false;
 
     if (!initialized) {
-        // tft & graphics
+        // backlight & tft graphics
         ledcSetup(TFT_CH, TFT_FRQ, TFT_RES);
         ledcAttachPin(TFT_BACKLIGHT_PIN, TFT_CH);
         ledcWrite(TFT_CH, 255);
 
         gfx.begin();
-        gfx.setRotation(3);
-        gfx.fillScreen(HX8357_RED);
 
         // radio - RF24
         radio.begin();
@@ -205,15 +186,9 @@ void initIO() {
         attachInterrupt(STMPE_IRQ_PIN, isrTouchHandler, PULLDOWN);
 
         // mcp port extender
-        mcp.begin(MCP_ADDRESS);
-        mcp.pinMode(MCP_A_IRQ_PIN, INPUT); //A
-        mcp.pullUp(MCP_A_IRQ_PIN, HIGH);
-        mcp.setupInterruptPin(MCP_A_IRQ_PIN, FALLING);
+        mcp.begin();
         pinMode(MCP_A_IRQ_PIN, INPUT);
         attachInterrupt(MCP_A_IRQ_PIN, isrMCPHandler, FALLING);
-        mcp.pinMode(MCP_B_IRQ_PIN, INPUT); //B
-        mcp.pullUp(MCP_B_IRQ_PIN, HIGH);
-        mcp.setupInterruptPin(MCP_B_IRQ_PIN, FALLING);
         pinMode(MCP_B_IRQ_PIN, INPUT);
         attachInterrupt(MCP_B_IRQ_PIN, isrMCPHandler, FALLING);
 
@@ -221,8 +196,13 @@ void initIO() {
         digitalInterruptQueue = xQueueCreate(10, sizeof(uint8_t));
         for (uint8_t i = 0; i < DIGITAL_AMT; i++) {
             if (digitalMap[i].inputPin == L_AUX_BTN_PIN || digitalMap[i].inputPin == R_AUX_BTN_PIN) {
+                // MCU pins
                 pinMode(digitalMap[i].inputPin, INPUT);
                 attachInterruptArg(digitalMap[i].inputPin, isrDigitalHandler, (void*)static_cast<uint32_t>(digitalMap[i].inputPin), CHANGE);
+            } else {
+                // MCP pins
+                mcp.pinMode(digitalMap[i].inputPin, INPUT);
+                mcp.setupInterruptPin(digitalMap[i].inputPin, CHANGE);
             }
         }
 
