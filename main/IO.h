@@ -7,21 +7,9 @@
 
 #include "Config.h"
 
-typedef struct {
-    const uint8_t inputPin;
-    bool value;
-} DigitalMap;
-
-typedef struct {
-    const uint8_t inputPin;
-    uint16_t base;
-    uint16_t min;
-    uint16_t max;
-    bool inverted;
-} AnalogMap;
-
-enum class Gamepad : uint8_t {
+typedef enum {
     // analog
+    eVoltage       = VOLTAGE_PIN,
     eLeft_JoyX     = L_JOY_X_PIN,
     eLeft_JoyY     = L_JOY_Y_PIN,
     eRight_JoyX    = R_JOY_X_PIN,
@@ -42,22 +30,30 @@ enum class Gamepad : uint8_t {
     eRight_DpadLeft  = R_DPAD_LT_PIN,
     eLeft_Bumper     = L_BUMPER_BTN_PIN,
     eRight_Bumper    = R_BUMPER_BTN_PIN,
-};
+} eGamepad;
 
-enum class AnalogSetting : uint8_t {
-    eAnalogMin,
-    eAnalogMax,
-    eAnalogBase,
-};
+typedef struct {
+    const eGamepad inputPin;
+    bool value;
+} DigitalMap;
+
+typedef struct {
+    const eGamepad inputPin;
+    uint16_t value;
+    uint16_t base;
+    uint16_t min;
+    uint16_t max;
+    bool inverted;
+} AnalogMap;
 
 typedef enum {
     eEventButton,
     eEventJoystick,
     eEventTrigger,
-} GamepadEventType;
+} eGamepadEventType;
 
 typedef struct {
-    GamepadEventType type;
+    eGamepadEventType type;
     union {
         DigitalMap* digital;
         AnalogMap* analog;

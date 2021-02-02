@@ -35,12 +35,20 @@ void update() {
 }
 
 void onGamepadEvent(GamepadEvent* e) {
-    if (e->type == GamepadEventType::eEventButton) {
+    if (e->type == eGamepadEventType::eEventButton) {
         Serial.print(F("button:"));
         Serial.print(e->digital->inputPin);
         Serial.print(F(" value:"));
         Serial.println(e->digital->value);
     }
+    // else if (e->type == eGamepadEventType::eEventJoystick) {
+    //     if (e->analog->inverted && e->analog->value > e->analog->min || !e->analog->inverted && e->analog->value < e->analog->max) {
+    //         Serial.print(F("joystick:"));
+    //         Serial.print(e->analog->inputPin);
+    //         Serial.print(F(" value:"));
+    //         Serial.println(e->analog->value);
+    //     }
+    // }
 
     if (screen) screen->onGamepadEvent(e);
 }

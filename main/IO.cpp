@@ -10,15 +10,15 @@
 #define MCP_BIT 0x04
 
 #define DIGITAL_AMT 12
-#define ANALOG_AMT 6
+#define ANALOG_AMT 7
 
-#define INIT_ANALOG_MIN 0
-#define INIT_ANALOG_MID 2047
-#define INIT_ANALOG_MAX 4095
+#define ANALOG_MIN 0
+#define ANALOG_MID 2047
+#define ANALOG_MAX 4095
 
 const byte addressDiscovery[6] = "RC-00";
 
-Adafruit_HX8357 gfx = Adafruit_HX8357(TFT_CS_PIN, TFT_DC_PIN, TFT_MOSI_PIN, TFT_SCK_PIN, TFT_RST_PIN, TFT_MISO_PIN);
+Adafruit_HX8357 gfx = Adafruit_HX8357(TFT_CS_PIN, TFT_DC_PIN, TFT_RST_PIN);
 Adafruit_STMPE610 touch = Adafruit_STMPE610(STMPE_CS_PIN);
 RF24 radio = RF24(RF_CE_PIN, RF_CS_PIN);
 Adafruit_MCP23017 mcp;
@@ -27,27 +27,28 @@ xQueueHandle digitalInterruptQueue = NULL;
 static TaskHandle_t inputHandlingTask;
 
 DigitalMap digitalMap[DIGITAL_AMT] = {
-    {static_cast<uint8_t>(Gamepad::eLeft_DpadUp), false},
-    {static_cast<uint8_t>(Gamepad::eLeft_DpadDown), false},
-    {static_cast<uint8_t>(Gamepad::eLeft_DpadRight), false},
-    {static_cast<uint8_t>(Gamepad::eLeft_DpadLeft), false},
-    {static_cast<uint8_t>(Gamepad::eRight_DpadUp), false},
-    {static_cast<uint8_t>(Gamepad::eRight_DpadDown), false},
-    {static_cast<uint8_t>(Gamepad::eRight_DpadRight), false},
-    {static_cast<uint8_t>(Gamepad::eRight_DpadLeft), false},
-    {static_cast<uint8_t>(Gamepad::eLeft_Bumper), false},
-    {static_cast<uint8_t>(Gamepad::eRight_Bumper), false},
-    {static_cast<uint8_t>(Gamepad::eLeft_Aux), false},
-    {static_cast<uint8_t>(Gamepad::eRight_Aux), false},
+    {eLeft_DpadUp, false},
+    {eLeft_DpadDown, false},
+    {eLeft_DpadRight, false},
+    {eLeft_DpadLeft, false},
+    {eRight_DpadUp, false},
+    {eRight_DpadDown, false},
+    {eRight_DpadRight, false},
+    {eRight_DpadLeft, false},
+    {eLeft_Bumper, false},
+    {eRight_Bumper, false},
+    {eLeft_Aux, false},
+    {eRight_Aux, false},
 };
 
 AnalogMap analogMap[ANALOG_AMT] = {
-    {static_cast<uint8_t>(Gamepad::eLeft_JoyX), INIT_ANALOG_MID, INIT_ANALOG_MIN, INIT_ANALOG_MAX, false},
-    {static_cast<uint8_t>(Gamepad::eLeft_JoyY), INIT_ANALOG_MID, INIT_ANALOG_MIN, INIT_ANALOG_MAX, false},
-    {static_cast<uint8_t>(Gamepad::eRight_JoyX), INIT_ANALOG_MID, INIT_ANALOG_MIN, INIT_ANALOG_MAX, true},
-    {static_cast<uint8_t>(Gamepad::eRight_JoyY), INIT_ANALOG_MID, INIT_ANALOG_MIN, INIT_ANALOG_MAX, true},
-    {static_cast<uint8_t>(Gamepad::eLeft_Trigger), INIT_ANALOG_MID, INIT_ANALOG_MIN, INIT_ANALOG_MAX, false},
-    {static_cast<uint8_t>(Gamepad::eRight_Trigger), INIT_ANALOG_MID, INIT_ANALOG_MIN, INIT_ANALOG_MAX, false},
+    {eVoltage, ANALOG_MIN, ANALOG_MIN, ANALOG_MIN, ANALOG_MAX, false},
+    {eLeft_JoyX, ANALOG_MID, ANALOG_MID, ANALOG_MIN, ANALOG_MAX, false},
+    {eLeft_JoyY, ANALOG_MID, ANALOG_MID, ANALOG_MIN, ANALOG_MAX, false},
+    {eRight_JoyX, ANALOG_MID, ANALOG_MID, ANALOG_MIN, ANALOG_MAX, true},
+    {eRight_JoyY, ANALOG_MID, ANALOG_MID, ANALOG_MIN, ANALOG_MAX, true},
+    {eLeft_Trigger, ANALOG_MID, ANALOG_MID, ANALOG_MIN, ANALOG_MAX, false},
+    {eRight_Trigger, ANALOG_MID, ANALOG_MID, ANALOG_MIN, ANALOG_MAX, false},
 };
 
 void handleDigitalEvent(DigitalMap* map) {
@@ -87,7 +88,7 @@ void inputAnalogTask(void* arg) {
     static const float max = 255.0f;
 
     uint16_t value;
-    Gamepad input;
+    eGamepad input;
     GamepadEvent ev;
 
     while (1) {
@@ -95,16 +96,16 @@ void inputAnalogTask(void* arg) {
         for (uint8_t i = 0; i < ANALOG_AMT; i++) {
             value = analogRead(analogMap[i].inputPin); // range: 0 to 4095
 
-            input = static_cast<Gamepad>(analogMap[i].inputPin);
-            ev.type = input == Gamepad::eLeft_Trigger || input == Gamepad::eRight_Trigger ? eEventTrigger : eEventJoystick;
+            input = analogMap[i].inputPin;
+            ev.type = input == eLeft_Trigger || input == eRight_Trigger ? eEventTrigger : eEventJoystick;
 
             if (ev.type == eEventTrigger) {
                 // TODO : handle trigger value
-                ev.analog = &analogMap[i];
             } else {
                 // TODO : handle joystick value
-                ev.analog = &analogMap[i];
             }
+
+            ev.analog = &analogMap[i];
 
             onGamepadEvent(&ev);
         }
@@ -187,6 +188,7 @@ void initIO() {
 
         gfx.begin();
         gfx.setRotation(3);
+        gfx.fillScreen(HX8357_RED);
 
         // radio - RF24
         radio.begin();
@@ -208,12 +210,12 @@ void initIO() {
         mcp.pullUp(MCP_A_IRQ_PIN, HIGH);
         mcp.setupInterruptPin(MCP_A_IRQ_PIN, FALLING);
         pinMode(MCP_A_IRQ_PIN, INPUT);
-        attachInterrupt(MCP_A_IRQ_PIN, isrMCPHandler, CHANGE);
+        attachInterrupt(MCP_A_IRQ_PIN, isrMCPHandler, FALLING);
         mcp.pinMode(MCP_B_IRQ_PIN, INPUT); //B
         mcp.pullUp(MCP_B_IRQ_PIN, HIGH);
         mcp.setupInterruptPin(MCP_B_IRQ_PIN, FALLING);
         pinMode(MCP_B_IRQ_PIN, INPUT);
-        attachInterrupt(MCP_B_IRQ_PIN, isrMCPHandler, CHANGE);
+        attachInterrupt(MCP_B_IRQ_PIN, isrMCPHandler, FALLING);
 
         // digital input
         digitalInterruptQueue = xQueueCreate(10, sizeof(uint8_t));
