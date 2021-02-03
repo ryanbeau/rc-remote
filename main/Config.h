@@ -1,39 +1,61 @@
 #ifndef RC_CONFIG_H
 #define RC_CONFIG_H
 
-#define STMPE_CS_PIN 0
-#define STMPE_SDI_PIN 0
-#define STMPE_SDO_PIN 0
-#define STMPE_SCK_PIN 0
+#define MCP_PIN_BIT 64
+#define MCP_PIN(v) (v|MCP_PIN_BIT)
 
-#define TFT_CS_PIN 16
-#define TFT_DC_PIN 17
+#define IO_CORE 0
+
+// TOUCH
+#define STMPE_CS_PIN 12
+#define STMPE_IRQ_PIN 14
+
+// TFT
+#define TFT_CS_PIN 5
+#define TFT_DC_PIN 13
+#define TFT_MOSI_PIN 23
+#define TFT_SCK_PIN 18
 #define TFT_RST_PIN -1
+#define TFT_MISO_PIN 19
+#define TFT_BACKLIGHT_PIN 2
+#define TFT_CH 0
+#define TFT_RES 8
+#define TFT_FRQ 5000
 
-#define RF_CE_PIN 0
-#define RF_CS_PIN 0
+// RF
+#define RF_CE_PIN 25
+#define RF_CS_PIN 26
+#define RF_IRQ_PIN 1
 
-#define BTN_UP_PIN 34
-#define BTN_DN_PIN 35
-#define BTN_RT_PIN 36
-#define BTN_LT_PIN 39
+// ANALOG
+#define VOLTAGE_PIN 4
+#define L_JOY_X_PIN 32
+#define L_JOY_Y_PIN 33
+#define R_JOY_X_PIN 34
+#define R_JOY_Y_PIN 35
+#define L_TRIG_PIN 36
+#define R_TRIG_PIN 39
 
-#define BTN_A_PIN 32
-#define BTN_B_PIN 33
-#define BTN_C_PIN 25
-#define BTN_D_PIN 26
+// MCP23017 port expander
+#define MCP_A_IRQ_PIN 0
+#define MCP_B_IRQ_PIN 15
 
-#define LT_JOY_X_PIN 0
-#define LT_JOY_Y_PIN 0
-#define RT_JOY_X_PIN 0
-#define RT_JOY_Y_PIN 0
-#define LT_TRIG_PIN 0
-#define RT_TRIG_PIN 0
+// DIGITAL
+#define L_AUX_BTN_PIN 16
+#define R_AUX_BTN_PIN 17
 
-#define LCD_PIN 13
+// note: below digital are using the MCP23017 port expander
+#define L_BUMPER_BTN_MCP_PIN MCP_PIN(0)
+#define R_BUMPER_BTN_MCP_PIN MCP_PIN(8)
 
-#define LCD_CH 0
-#define LCD_RES 8
-#define LCD_FRQ 5000
+#define L_DPAD_UP_MCP_PIN MCP_PIN(1)
+#define L_DPAD_DN_MCP_PIN MCP_PIN(2)
+#define L_DPAD_RT_MCP_PIN MCP_PIN(3)
+#define L_DPAD_LT_MCP_PIN MCP_PIN(4)
+
+#define R_DPAD_UP_MCP_PIN MCP_PIN(9)
+#define R_DPAD_DN_MCP_PIN MCP_PIN(10)
+#define R_DPAD_RT_MCP_PIN MCP_PIN(11)
+#define R_DPAD_LT_MCP_PIN MCP_PIN(12)
 
 #endif
