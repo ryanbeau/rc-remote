@@ -147,7 +147,7 @@ void inputTask(void* arg) {
             // MCP port extender
             if (notifiedValue & MCP_BIT) {
                 uint8_t pin = mcp.getLastInterruptPin();
-                bool value = mcp.getLastInterruptPinValue();
+                bool value = mcp.digitalRead(pin); //clears MCP
                 for (uint8_t i = 0; i < DIGITAL_AMT; i++) {
                     if (digitalMap[i].inputPin == pin && digitalMap[i].value != value) {
                         digitalMap[i].value = digitalRead(pin);
@@ -170,6 +170,7 @@ void initIO() {
         ledcWrite(TFT_CH, 255);
 
         gfx.begin();
+        gfx.setRotation(1);
 
         // radio - RF24
         radio.begin();
@@ -187,15 +188,15 @@ void initIO() {
 
         // mcp port extender
         mcp.begin();
+        mcp.setupInterrupts(true, false, LOW);
+        mcp.readGPIOAB();
         pinMode(MCP_A_IRQ_PIN, INPUT);
         attachInterrupt(MCP_A_IRQ_PIN, isrMCPHandler, FALLING);
-        pinMode(MCP_B_IRQ_PIN, INPUT);
-        attachInterrupt(MCP_B_IRQ_PIN, isrMCPHandler, FALLING);
 
         // digital input
         digitalInterruptQueue = xQueueCreate(10, sizeof(uint8_t));
         for (uint8_t i = 0; i < DIGITAL_AMT; i++) {
-            if (digitalMap[i].inputPin == L_AUX_BTN_PIN || digitalMap[i].inputPin == R_AUX_BTN_PIN) {
+            if (digitalMap[i].inputPin == eLeft_Aux || digitalMap[i].inputPin == eRight_Aux) {
                 // MCU pins
                 pinMode(digitalMap[i].inputPin, INPUT);
                 attachInterruptArg(digitalMap[i].inputPin, isrDigitalHandler, (void*)static_cast<uint32_t>(digitalMap[i].inputPin), CHANGE);

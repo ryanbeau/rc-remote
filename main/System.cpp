@@ -15,8 +15,8 @@ void HUD::update(uint8_t ms) {
 
         if (_updated) {
             for (uint8_t j = 0; j < 2; j++) {
-                uint8_t x = 58 + (j * 266);
-                uint8_t y = 102;
+                uint16_t x = 58 + (j * 266);
+                uint16_t y = 102;
                 for (uint8_t i = 0; i < 2; i++) {
                     // joy circle
                     if (_updated == 255) {
