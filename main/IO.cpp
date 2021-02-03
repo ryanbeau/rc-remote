@@ -5,9 +5,9 @@
 
 #include "System.h"
 
-#define TOUCH_BIT 0x01
-#define RF_BIT 0x02
-#define MCP_BIT 0x04
+#define TOUCH_TASK_BIT 0x01
+#define RF_TASK_BIT 0x02
+#define MCP_TASK_BIT 0x04
 
 #define DIGITAL_AMT 12
 #define ANALOG_AMT 7
@@ -61,19 +61,19 @@ void IRAM_ATTR isrDigitalHandler(void* arg) {
 
 void IRAM_ATTR isrRFHandler() {
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-    xTaskNotifyFromISR(inputHandlingTask, RF_BIT, eSetBits, &xHigherPriorityTaskWoken);
+    xTaskNotifyFromISR(inputHandlingTask, RF_TASK_BIT, eSetBits, &xHigherPriorityTaskWoken);
     portYIELD_FROM_ISR();
 }
 
 void IRAM_ATTR isrTouchHandler() {
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-    xTaskNotifyFromISR(inputHandlingTask, TOUCH_BIT, eSetBits, &xHigherPriorityTaskWoken);
+    xTaskNotifyFromISR(inputHandlingTask, TOUCH_TASK_BIT, eSetBits, &xHigherPriorityTaskWoken);
     portYIELD_FROM_ISR();
 }
 
 void IRAM_ATTR isrMCPHandler() {
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-    xTaskNotifyFromISR(inputHandlingTask, MCP_BIT, eSetBits, &xHigherPriorityTaskWoken);
+    xTaskNotifyFromISR(inputHandlingTask, MCP_TASK_BIT, eSetBits, &xHigherPriorityTaskWoken);
     portYIELD_FROM_ISR();
 }
 
@@ -126,7 +126,7 @@ void inputTask(void* arg) {
 
         if (xResult == pdPASS) {
             // Touch
-            if (notifiedValue & TOUCH_BIT) {
+            if (notifiedValue & TOUCH_TASK_BIT) {
                 if (touch.touched()) {
                     point = touch.getPoint();
 
@@ -135,7 +135,7 @@ void inputTask(void* arg) {
             }
 
             // RF
-            if (notifiedValue & RF_BIT) {
+            if (notifiedValue & RF_TASK_BIT) {
                 while (radio.available(&pipe)) {
                     Payload payload;
                     radio.read(&payload, sizeof(payload));
@@ -145,12 +145,12 @@ void inputTask(void* arg) {
             }
 
             // MCP port extender
-            if (notifiedValue & MCP_BIT) {
+            if (notifiedValue & MCP_TASK_BIT) {
                 uint8_t pin = mcp.getLastInterruptPin();
-                bool value = mcp.digitalRead(pin); //clears MCP
+                bool value = mcp.getLastInterruptPinValue();
                 for (uint8_t i = 0; i < DIGITAL_AMT; i++) {
-                    if (digitalMap[i].inputPin == pin && digitalMap[i].value != value) {
-                        digitalMap[i].value = digitalRead(pin);
+                    if (digitalMap[i].inputPin % MCP_PIN_BIT == pin && digitalMap[i].value != value) {
+                        digitalMap[i].value = value;
 
                         handleDigitalEvent(&digitalMap[i]);
                     }
@@ -196,14 +196,14 @@ void initIO() {
         // digital input
         digitalInterruptQueue = xQueueCreate(10, sizeof(uint8_t));
         for (uint8_t i = 0; i < DIGITAL_AMT; i++) {
-            if (digitalMap[i].inputPin == eLeft_Aux || digitalMap[i].inputPin == eRight_Aux) {
+            if (digitalMap[i].inputPin >= MCP_PIN_BIT) { 
+                // MCP pins
+                mcp.pinMode(digitalMap[i].inputPin % MCP_PIN_BIT, INPUT);
+                mcp.setupInterruptPin(digitalMap[i].inputPin % MCP_PIN_BIT, CHANGE);
+            } else { 
                 // MCU pins
                 pinMode(digitalMap[i].inputPin, INPUT);
-                attachInterruptArg(digitalMap[i].inputPin, isrDigitalHandler, (void*)static_cast<uint32_t>(digitalMap[i].inputPin), CHANGE);
-            } else {
-                // MCP pins
-                mcp.pinMode(digitalMap[i].inputPin, INPUT);
-                mcp.setupInterruptPin(digitalMap[i].inputPin, CHANGE);
+                attachInterruptArg(digitalMap[i].inputPin, isrDigitalHandler, (void*)digitalMap[i].inputPin, CHANGE);
             }
         }
 

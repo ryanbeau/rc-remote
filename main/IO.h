@@ -26,20 +26,18 @@ typedef enum {
 } eGamepadAnalog;
 
 typedef enum {
-    // digital on MCU
     eLeft_Aux = L_AUX_BTN_PIN,
     eRight_Aux = R_AUX_BTN_PIN,
-    // digital on MCP23017 port expander
+    eLeft_Bumper = L_BUMPER_BTN_MCP_PIN,
     eLeft_DpadUp = L_DPAD_UP_MCP_PIN,
     eLeft_DpadDown = L_DPAD_DN_MCP_PIN,
     eLeft_DpadRight = L_DPAD_RT_MCP_PIN,
     eLeft_DpadLeft = L_DPAD_LT_MCP_PIN,
+    eRight_Bumper = R_BUMPER_BTN_MCP_PIN,
     eRight_DpadUp = R_DPAD_UP_MCP_PIN,
     eRight_DpadDown = R_DPAD_DN_MCP_PIN,
     eRight_DpadRight = R_DPAD_RT_MCP_PIN,
     eRight_DpadLeft = R_DPAD_LT_MCP_PIN,
-    eLeft_Bumper = L_BUMPER_BTN_MCP_PIN,
-    eRight_Bumper = R_BUMPER_BTN_MCP_PIN,
 } eGamepadDigital;
 
 typedef struct {

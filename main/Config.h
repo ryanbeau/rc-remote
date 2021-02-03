@@ -1,6 +1,9 @@
 #ifndef RC_CONFIG_H
 #define RC_CONFIG_H
 
+#define MCP_PIN_BIT 64
+#define MCP_PIN(v) (v|MCP_PIN_BIT)
+
 #define IO_CORE 0
 
 // TOUCH
@@ -42,17 +45,17 @@
 #define R_AUX_BTN_PIN 17
 
 // note: below digital are using the MCP23017 port expander
-#define L_BUMPER_BTN_MCP_PIN 0
-#define R_BUMPER_BTN_MCP_PIN 8
+#define L_BUMPER_BTN_MCP_PIN MCP_PIN(0)
+#define R_BUMPER_BTN_MCP_PIN MCP_PIN(8)
 
-#define L_DPAD_UP_MCP_PIN 1
-#define L_DPAD_DN_MCP_PIN 2
-#define L_DPAD_RT_MCP_PIN 3
-#define L_DPAD_LT_MCP_PIN 4
+#define L_DPAD_UP_MCP_PIN MCP_PIN(1)
+#define L_DPAD_DN_MCP_PIN MCP_PIN(2)
+#define L_DPAD_RT_MCP_PIN MCP_PIN(3)
+#define L_DPAD_LT_MCP_PIN MCP_PIN(4)
 
-#define R_DPAD_UP_MCP_PIN 9
-#define R_DPAD_DN_MCP_PIN 10
-#define R_DPAD_RT_MCP_PIN 11
-#define R_DPAD_LT_MCP_PIN 12
+#define R_DPAD_UP_MCP_PIN MCP_PIN(9)
+#define R_DPAD_DN_MCP_PIN MCP_PIN(10)
+#define R_DPAD_RT_MCP_PIN MCP_PIN(11)
+#define R_DPAD_LT_MCP_PIN MCP_PIN(12)
 
 #endif
