@@ -15,9 +15,17 @@ class Screen {
     uint8_t _updated = 255;
 };
 
-class HUD : public Screen {
+class AnalogCalibration : public Screen {
    public:
     void update(uint8_t ms) override;
+
+   private:
+    AnalogMap* leftJoyX;
+    AnalogMap* leftJoyY;
+    AnalogMap* rightJoyX;
+    AnalogMap* rightJoyY;
+    AnalogMap* leftTrigger;
+    AnalogMap* rightTrigger;
 };
 
 extern void setScreen(Screen* s);

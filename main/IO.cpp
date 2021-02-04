@@ -40,12 +40,56 @@ DigitalMap digitalMap[DIGITAL_AMT] = {
 AnalogMap analogMap[ANALOG_AMT] = {
     {eVoltage, ANALOG_MIN, ANALOG_MIN, ANALOG_MIN, ANALOG_MAX, false},
     {eLeft_JoyX, ANALOG_MID, ANALOG_MID, ANALOG_MIN, ANALOG_MAX, false},
-    {eLeft_JoyY, ANALOG_MID, ANALOG_MID, ANALOG_MIN, ANALOG_MAX, false},
+    {eLeft_JoyY, ANALOG_MID, ANALOG_MID, ANALOG_MIN, ANALOG_MAX, true},
     {eRight_JoyX, ANALOG_MID, ANALOG_MID, ANALOG_MIN, ANALOG_MAX, true},
-    {eRight_JoyY, ANALOG_MID, ANALOG_MID, ANALOG_MIN, ANALOG_MAX, true},
+    {eRight_JoyY, ANALOG_MID, ANALOG_MID, ANALOG_MIN, ANALOG_MAX, false},
     {eLeft_Trigger, ANALOG_MID, ANALOG_MID, ANALOG_MIN, ANALOG_MAX, false},
     {eRight_Trigger, ANALOG_MID, ANALOG_MID, ANALOG_MIN, ANALOG_MAX, false},
 };
+
+void AnalogMap::setBaseMinMax(uint16_t val) {
+    base = val;
+    min = val;
+    max = val;
+}
+
+void AnalogMap::reclampMinMax() {
+    if (min > value) {
+        min = value;
+    }
+    if (max < value) {
+        max = value;
+    }
+}
+
+int16_t AnalogMap::getMapValue() {
+    int16_t val = base;
+
+    if (value < min) {
+        val = ANALOG_MIN;
+    } else if (value > max) {
+        val = ANALOG_MAX;
+    } else if (val < base) {
+        val = map(value, min, base, ANALOG_MIN, ANALOG_MID);
+    } else {
+        val = map(value, base, max, ANALOG_MID, ANALOG_MAX);
+    }
+
+    // joystick
+    if (inputPin != eLeft_Trigger && inputPin != eRight_Trigger) {
+        val -= ANALOG_MID;
+    }
+
+    return inverted ? -val : val;
+}
+
+AnalogMap* getAnalogMap(eGamepadAnalog gamepadAnalog) {
+    for (uint8_t i = 0; i < ANALOG_AMT; i++) {
+        if (analogMap[i].inputPin == gamepadAnalog) {
+            return &analogMap[i];
+        }
+    }
+}
 
 void handleDigitalEvent(DigitalMap* map) {
     GamepadEvent ev = {digital : map};
@@ -82,7 +126,6 @@ void inputAnalogTask(void* arg) {
     static const float max = 255.0f;
 
     while (1) {
-        vTaskDelay(xDelay);
         for (uint8_t i = 0; i < ANALOG_AMT; i++) {
             analogMap[i].value = analogRead(analogMap[i].inputPin);  // range: 0 to 4095
 
@@ -92,6 +135,7 @@ void inputAnalogTask(void* arg) {
                 // TODO : handle joystick value
             }
         }
+        vTaskDelay(xDelay);
     }
 }
 
@@ -191,16 +235,16 @@ void initIO() {
         mcp.setupInterrupts(true, false, LOW);
         mcp.readGPIOAB();
         pinMode(MCP_A_IRQ_PIN, INPUT);
-        attachInterrupt(MCP_A_IRQ_PIN, isrMCPHandler, FALLING);
+        attachInterrupt(MCP_A_IRQ_PIN, isrMCPHandler, CHANGE);
 
         // digital input
         digitalInterruptQueue = xQueueCreate(10, sizeof(uint8_t));
         for (uint8_t i = 0; i < DIGITAL_AMT; i++) {
-            if (digitalMap[i].inputPin >= MCP_PIN_BIT) { 
+            if (digitalMap[i].inputPin >= MCP_PIN_BIT) {
                 // MCP pins
                 mcp.pinMode(digitalMap[i].inputPin % MCP_PIN_BIT, INPUT);
                 mcp.setupInterruptPin(digitalMap[i].inputPin % MCP_PIN_BIT, CHANGE);
-            } else { 
+            } else {
                 // MCU pins
                 pinMode(digitalMap[i].inputPin, INPUT);
                 attachInterruptArg(digitalMap[i].inputPin, isrDigitalHandler, (void*)digitalMap[i].inputPin, CHANGE);

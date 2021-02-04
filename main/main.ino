@@ -10,7 +10,7 @@ void setup() {
 
     initIO();
 
-    setScreen(new HUD());
+    setScreen(new AnalogCalibration());
 }
 
 void loop() {

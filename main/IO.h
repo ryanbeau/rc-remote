@@ -14,7 +14,7 @@
 #define ANALOG_MID 2047
 #define ANALOG_MAX 4095
 
-typedef enum {
+enum eGamepadAnalog {
     // analog
     eVoltage = VOLTAGE_PIN,
     eLeft_JoyX = L_JOY_X_PIN,
@@ -23,9 +23,9 @@ typedef enum {
     eRight_JoyY = R_JOY_Y_PIN,
     eLeft_Trigger = L_TRIG_PIN,
     eRight_Trigger = R_TRIG_PIN,
-} eGamepadAnalog;
+};
 
-typedef enum {
+enum eGamepadDigital {
     eLeft_Aux = L_AUX_BTN_PIN,
     eRight_Aux = R_AUX_BTN_PIN,
     eLeft_Bumper = L_BUMPER_BTN_MCP_PIN,
@@ -38,33 +38,45 @@ typedef enum {
     eRight_DpadDown = R_DPAD_DN_MCP_PIN,
     eRight_DpadRight = R_DPAD_RT_MCP_PIN,
     eRight_DpadLeft = R_DPAD_LT_MCP_PIN,
-} eGamepadDigital;
+};
 
-typedef struct {
+struct DigitalMap {
     const eGamepadDigital inputPin;
     bool value;
-} DigitalMap;
+};
 
-typedef struct {
+struct AnalogMap {
     const eGamepadAnalog inputPin;
     uint16_t value;
     uint16_t base;
     uint16_t min;
     uint16_t max;
     bool inverted;
-} AnalogMap;
 
-typedef struct {
+    // setBaseMinMax sets the base, min, max with value.
+    void setBaseMinMax(uint16_t value);
+
+    // reclampMinMax clamps the min and max with value if below min or above max.
+    void reclampMinMax();
+
+    // getMapValue gets the mapped value from base, min, max.
+    int16_t getMapValue();
+};
+
+struct GamepadEvent {
     DigitalMap* digital;
-} GamepadEvent;
+};
 
-typedef struct {
+struct Payload {
     uint8_t typeVersion;
-} Payload;
+};
 
 extern Adafruit_HX8357 gfx;
 
 // initIO initializes all default or eeprom stored input/output devices and values.
 extern void initIO();
+
+// getAnalogMap returns the specific AnalogMap.
+extern AnalogMap* getAnalogMap(eGamepadAnalog gamepadAnalog);
 
 #endif

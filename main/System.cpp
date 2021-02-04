@@ -2,15 +2,35 @@
 
 static Screen* screen;
 
-void HUD::update(uint8_t ms) {
+void AnalogCalibration::update(uint8_t ms) {
     if (_updated) {
         const uint16_t white = RGB565(255, 255, 255);
         const uint16_t lightgray = RGB565(154, 154, 154);
         const uint16_t midgray = RGB565(104, 104, 104);
         const uint16_t darkgray = RGB565(14, 14, 14);
+        const uint16_t green = RGB565(0, 255, 0);
 
         if (_updated == 255) {
             gfx.fillScreen(RGB565(33, 35, 36));
+
+            leftJoyX = getAnalogMap(eGamepadAnalog::eLeft_JoyX);
+            leftJoyY = getAnalogMap(eGamepadAnalog::eLeft_JoyY);
+            rightJoyX = getAnalogMap(eGamepadAnalog::eRight_JoyX);
+            rightJoyY = getAnalogMap(eGamepadAnalog::eRight_JoyY);
+            leftTrigger = getAnalogMap(eGamepadAnalog::eLeft_Trigger);
+            rightTrigger = getAnalogMap(eGamepadAnalog::eRight_Trigger);
+
+            // delay to ensure analog has been read
+            const TickType_t xDelay = 50 / portTICK_PERIOD_MS;
+            vTaskDelay(xDelay);
+
+            // set analog base, min & max
+            leftJoyX->setBaseMinMax(leftJoyX->value);
+            leftJoyY->setBaseMinMax(leftJoyY->value);
+            rightJoyX->setBaseMinMax(rightJoyX->value);
+            rightJoyY->setBaseMinMax(rightJoyY->value);
+            leftTrigger->setBaseMinMax(leftTrigger->value);
+            rightTrigger->setBaseMinMax(rightTrigger->value);
         }
 
         const uint16_t y = 102;
@@ -39,6 +59,14 @@ void HUD::update(uint8_t ms) {
                         gfx.drawPixel(x + 42 + (i * 13), y + 43 + (k * 11), darkgray);
                         gfx.drawPixel(x + 43 + (i * 11), y + 42 + (k * 13), darkgray);
                     }
+                } else {
+                    // reclamp min/max - if value is below min or above max
+                    leftJoyX->reclampMinMax();
+                    leftJoyY->reclampMinMax();
+                    rightJoyX->reclampMinMax();
+                    rightJoyY->reclampMinMax();
+                    leftTrigger->reclampMinMax();
+                    rightTrigger->reclampMinMax();
                 }
 
                 // joy axis
@@ -50,21 +78,22 @@ void HUD::update(uint8_t ms) {
                 gfx.drawFastHLine(x + 1 + (i * 60), y + 48, 36, midgray);
                 gfx.drawFastHLine(x + 1 + (i * 60), y + 49, 36, lightgray);
 
-                int16_t valX = analogRead(j == 0 ? L_JOY_X_PIN : R_JOY_X_PIN) - ANALOG_MID;
-                int16_t valY = analogRead(j == 0 ? L_JOY_Y_PIN : R_JOY_Y_PIN) - ANALOG_MID;
-                if (j == 1) {
-                    valX = -valX;
-                    valY = -valY;
-                }
+                int16_t valX = j == 0 ? leftJoyX->getMapValue() : rightJoyX->getMapValue();
 
                 if (i == 0 && valX < -56 || i == 1 && valX > 56) {
                     valX = map(valX < 0 ? -valX : valX, 0, ANALOG_MID, 0, 36);
-                    gfx.fillRect(x + 1 + (i * 60) + (i == 0 ? 36 - valX : 0), y + 48, valX, 2, white);
+                    gfx.fillRect(x + 1 + (i * 60) + (i == 0 ? 36 - valX : 0), y + 48, valX, 2, valX < 36 ? white : green);
                 }
 
-                if (i == 0 && valY < -56 || i == 1 && valY > 56) {
-                    valY = map(valY < 0 ? -valY : valY, 0, ANALOG_MID, 0, 36);
-                    gfx.fillRect(x + 48, y + 1 + (i * 60) + (i == 0 ? 36 - valY : 0), 2, valY, white);
+                int16_t valY = j == 0 ? leftJoyY->getMapValue() : rightJoyY->getMapValue();
+
+                if (i == 0 && valY < -113) {
+                    valY = map(-valY, 0, ANALOG_MID, 0, 36);
+                    gfx.fillRect(x + 48, y + 1 + (i * 60) + 36 - valY, 2, valY, valX < 36 ? white : green);
+                }
+                if (i == 1 && valY > 113) {
+                    valY = map(valY, 0, ANALOG_MID, 0, 36);
+                    gfx.fillRect(x + 48, y + 1 + (i * 60) + 0, 2, valY, valX < 36 ? white : green);
                 }
             }
 
@@ -74,10 +103,9 @@ void HUD::update(uint8_t ms) {
             gfx.drawFastVLine(x + 1 + (j * 38), y + 1, 60, lightgray);
             gfx.drawFastVLine(x + 2 + (j * 38), y + 1, 60, midgray);
 
-            uint16_t valTrig = analogRead(j == 0 ? L_TRIG_PIN : R_TRIG_PIN);
-            if (valTrig > ANALOG_MID + 34) {
-                valTrig -= ANALOG_MID;
-                valTrig = map(valTrig, 0, ANALOG_MID, 0, 60);
+            uint16_t valTrig = j == 0 ? leftTrigger->getMapValue() : rightTrigger->getMapValue();
+            if (valTrig > 68) {
+                valTrig = map(valTrig, 0, ANALOG_MAX, 0, 60);
                 gfx.fillRect(x + 1 + (j * 38), y + 1 + (60 - valTrig), 2, valTrig, white);
             }
         }
