@@ -1,6 +1,8 @@
 # rc-remote
 RC Remote controller with screen
 
+![Image of ESP32](ESP32.jpg)
+
 Pin Addressing
 ==============
 
