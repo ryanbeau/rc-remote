@@ -1,6 +1,7 @@
 #include "IO.h"
 
 #include <Adafruit_MCP23017.h>
+#include <Adafruit_STMPE610.h>
 #include <RF24.h>
 
 #include "System.h"
@@ -16,6 +17,12 @@
 #define ANALOG_MIN 0
 #define ANALOG_MID 2047
 #define ANALOG_MAX 4095
+
+// This is calibration data for the raw touch data to the screen coordinates
+#define TS_MINX 100
+#define TS_MAXX 3800
+#define TS_MINY 100
+#define TS_MAXY 3750
 
 const byte addressDiscovery[6] = "RC-00";
 
@@ -186,6 +193,7 @@ void inputTask(void* arg) {
     uint32_t notifiedValue;
 
     TS_Point point;
+    TouchPoint touchPoint;
     uint8_t pipe;
 
     while (1) {
@@ -198,7 +206,10 @@ void inputTask(void* arg) {
                 if (touch.touched()) {
                     point = touch.getPoint();
 
-                    onTouchEvent(&point);
+                    touchPoint.x = map(point.x, TS_MINX, TS_MAXX, 0, gfx.width());
+                    touchPoint.y = map(point.y, TS_MINY, TS_MAXY, 0, gfx.height());
+
+                    onTouchEvent(&touchPoint);
                 }
             }
 

@@ -2,7 +2,6 @@
 #define RC_IO_H
 
 #include <Adafruit_HX8357.h>
-#include <Adafruit_STMPE610.h>
 #include <Arduino.h>
 
 #include "Config.h"
@@ -64,6 +63,11 @@ struct AnalogMap {
 
 struct GamepadEvent {
     DigitalMap* digital;
+};
+
+struct TouchPoint {
+    uint16_t x;
+    uint16_t y;
 };
 
 struct Payload {
