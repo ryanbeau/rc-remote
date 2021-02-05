@@ -12,6 +12,11 @@
 #define DIGITAL_AMT 12
 #define ANALOG_AMT 7
 
+#define ANALOG_DRIFT 100
+#define ANALOG_MIN 0
+#define ANALOG_MID 2047
+#define ANALOG_MAX 4095
+
 const byte addressDiscovery[6] = "RC-00";
 
 Adafruit_HX8357 gfx = Adafruit_HX8357(TFT_CS_PIN, TFT_DC_PIN, TFT_RST_PIN);
@@ -62,25 +67,29 @@ void AnalogMap::reclampMinMax() {
     }
 }
 
-int16_t AnalogMap::getMapValue() {
-    int16_t val = base;
+int16_t AnalogMap::getMapValue(int16_t toMin, int16_t toMax) {
+    if (inverted) {
+        int16_t temp = toMin;
+        toMin = toMax;
+        toMax = temp;
+    }
+
+    int16_t toMid = (toMax-toMin)/2;
+    int16_t val = toMid;
 
     if (value < min) {
-        val = ANALOG_MIN;
+        val = toMin;
     } else if (value > max) {
-        val = ANALOG_MAX;
-    } else if (val < base) {
-        val = map(value, min, base, ANALOG_MIN, ANALOG_MID);
+        val = toMax;   
+    } else if (value < base - ANALOG_DRIFT) {
+        val = map(value, min, base - ANALOG_DRIFT, toMin, toMid);
+    } else if (value > base + ANALOG_DRIFT) {
+        val = map(value, base + ANALOG_DRIFT, max, toMid, toMax);
     } else {
-        val = map(value, base, max, ANALOG_MID, ANALOG_MAX);
+        val = toMid;
     }
 
-    // joystick
-    if (inputPin != eLeft_Trigger && inputPin != eRight_Trigger) {
-        val -= ANALOG_MID;
-    }
-
-    return inverted ? -val : val;
+    return val;
 }
 
 AnalogMap* getAnalogMap(eGamepadAnalog gamepadAnalog) {

@@ -10,10 +10,6 @@
 // RGB565 convert 24bit RGB(8,8,8) [0-255, 0-255, 0-255] to 16bit RGB(5,6,5) [0-31, 0-63, 0-31].
 #define RGB565(r, g, b) (((r & 0xf8) << 8) | ((g & 0xfc) << 3) | (b >> 3))
 
-#define ANALOG_MIN 0
-#define ANALOG_MID 2047
-#define ANALOG_MAX 4095
-
 enum eGamepadAnalog {
     // analog
     eVoltage = VOLTAGE_PIN,
@@ -60,7 +56,7 @@ struct AnalogMap {
     void reclampMinMax();
 
     // getMapValue gets the mapped value from base, min, max.
-    int16_t getMapValue();
+    int16_t getMapValue(int16_t toMin, int16_t toMax);
 };
 
 struct GamepadEvent {

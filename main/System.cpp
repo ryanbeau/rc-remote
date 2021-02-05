@@ -78,21 +78,19 @@ void AnalogCalibration::update(uint8_t ms) {
                 gfx.drawFastHLine(x + 1 + (i * 60), y + 48, 36, midgray);
                 gfx.drawFastHLine(x + 1 + (i * 60), y + 49, 36, lightgray);
 
-                int16_t valX = j == 0 ? leftJoyX->getMapValue() : rightJoyX->getMapValue();
-
-                if (i == 0 && valX < -56 || i == 1 && valX > 56) {
-                    valX = map(valX < 0 ? -valX : valX, 0, ANALOG_MID, 0, 36);
-                    gfx.fillRect(x + 1 + (i * 60) + (i == 0 ? 36 - valX : 0), y + 48, valX, 2, valX < 36 ? white : green);
+                int16_t valX = j == 0 ? leftJoyX->getMapValue(0, 36) : rightJoyX->getMapValue(0, 36);
+                if (i == 0 && valX < -56) {
+                    gfx.fillRect(x + 37 + (i * 60) - valX, y + 48, valX, 2, valX < 36 ? white : green);
+                }
+                if (i == 1 && valX > 56) {
+                    gfx.fillRect(x + 1 + (i * 60), y + 48, valX, 2, valX < 36 ? white : green);
                 }
 
-                int16_t valY = j == 0 ? leftJoyY->getMapValue() : rightJoyY->getMapValue();
-
-                if (i == 0 && valY < -113) {
-                    valY = map(-valY, 0, ANALOG_MID, 0, 36);
-                    gfx.fillRect(x + 48, y + 1 + (i * 60) + 36 - valY, 2, valY, valX < 36 ? white : green);
+                int16_t valY = j == 0 ? leftJoyY->getMapValue(0, 36) : rightJoyY->getMapValue(0, 36);
+                if (i == 0 && valY < 0) {
+                    gfx.fillRect(x + 48, y + 37 + (i * 60) - valY, 2, valY, valX < 36 ? white : green);
                 }
-                if (i == 1 && valY > 113) {
-                    valY = map(valY, 0, ANALOG_MID, 0, 36);
+                if (i == 1 && valY > 0) {
                     gfx.fillRect(x + 48, y + 1 + (i * 60) + 0, 2, valY, valX < 36 ? white : green);
                 }
             }
@@ -103,9 +101,8 @@ void AnalogCalibration::update(uint8_t ms) {
             gfx.drawFastVLine(x + 1 + (j * 38), y + 1, 60, lightgray);
             gfx.drawFastVLine(x + 2 + (j * 38), y + 1, 60, midgray);
 
-            uint16_t valTrig = j == 0 ? leftTrigger->getMapValue() : rightTrigger->getMapValue();
-            if (valTrig > 68) {
-                valTrig = map(valTrig, 0, ANALOG_MAX, 0, 60);
+            uint16_t valTrig = j == 0 ? leftTrigger->getMapValue(0, 60) : rightTrigger->getMapValue(0, 60);
+            if (valTrig > 0) {
                 gfx.fillRect(x + 1 + (j * 38), y + 1 + (60 - valTrig), 2, valTrig, white);
             }
         }
