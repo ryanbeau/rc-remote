@@ -77,16 +77,16 @@ int16_t AnalogMap::getMapValue(int16_t toMin, int16_t toMax) {
     int16_t toMid = (toMax-toMin)/2;
     int16_t val = toMid;
 
-    if (value < min) {
+    if (value < min + ANALOG_DRIFT) {
         val = toMin;
-    } else if (value > max) {
+    } else if (value > max - ANALOG_DRIFT) {
         val = toMax;   
     } else if (value < base - ANALOG_DRIFT) {
-        val = map(value, min, base - ANALOG_DRIFT, toMin, toMid);
+        val = map(value, min + ANALOG_DRIFT, base - ANALOG_DRIFT, toMin, toMid);
     } else if (value > base + ANALOG_DRIFT) {
-        val = map(value, base + ANALOG_DRIFT, max, toMid, toMax);
-    } else {
-        val = toMid;
+        val = map(value, base + ANALOG_DRIFT, max - ANALOG_DRIFT, toMid, toMax);
+    } else if (inputPin == eLeft_Trigger || inputPin == eRight_Trigger) {
+        val = toMin;
     }
 
     return val;

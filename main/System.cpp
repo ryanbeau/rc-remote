@@ -79,19 +79,19 @@ void AnalogCalibration::update(uint8_t ms) {
                 gfx.drawFastHLine(x + 1 + (i * 60), y + 49, 36, lightgray);
 
                 int16_t valX = j == 0 ? leftJoyX->getMapValue(0, 36) : rightJoyX->getMapValue(0, 36);
-                if (i == 0 && valX < -56) {
-                    gfx.fillRect(x + 37 + (i * 60) - valX, y + 48, valX, 2, valX < 36 ? white : green);
+                if (i == 0 && valX < 0) {
+                    gfx.fillRect(x + 37 + valX, y + 48, -valX, 2, valX < 36 ? white : green);
                 }
-                if (i == 1 && valX > 56) {
-                    gfx.fillRect(x + 1 + (i * 60), y + 48, valX, 2, valX < 36 ? white : green);
+                if (i == 1 && valX > 0) {
+                    gfx.fillRect(x + 61, y + 48, valX, 2, valX < 36 ? white : green);
                 }
 
                 int16_t valY = j == 0 ? leftJoyY->getMapValue(0, 36) : rightJoyY->getMapValue(0, 36);
                 if (i == 0 && valY < 0) {
-                    gfx.fillRect(x + 48, y + 37 + (i * 60) - valY, 2, valY, valX < 36 ? white : green);
+                    gfx.fillRect(x + 48, y + 37 + valY, 2, -valY, valY < 36 ? white : green);
                 }
                 if (i == 1 && valY > 0) {
-                    gfx.fillRect(x + 48, y + 1 + (i * 60) + 0, 2, valY, valX < 36 ? white : green);
+                    gfx.fillRect(x + 48, y + 61, 2, valY, valY < 36 ? white : green);
                 }
             }
 
