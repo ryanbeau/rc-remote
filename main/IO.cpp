@@ -141,6 +141,7 @@ void IRAM_ATTR isrRFHandler() {
 }
 
 void IRAM_ATTR isrTouchHandler() {
+    Serial.print(F("touched isr handler"));
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     xTaskNotifyFromISR(inputHandlingTask, TOUCH_TASK_BIT, eSetBits, &xHigherPriorityTaskWoken);
     portYIELD_FROM_ISR();
@@ -203,14 +204,17 @@ void inputTask(void* arg) {
         if (xResult == pdPASS) {
             // Touch
             if (notifiedValue & TOUCH_TASK_BIT) {
-                if (touch.touched()) {
-                    point = touch.getPoint();
+                point = touch.getPoint();
 
-                    touchPoint.x = map(point.x, TS_MINX, TS_MAXX, 0, gfx.width());
-                    touchPoint.y = map(point.y, TS_MINY, TS_MAXY, 0, gfx.height());
+                Serial.print(F("touched task x:"));
+                Serial.print(point.x);
+                Serial.print(F(" y:"));
+                Serial.println(point.y);
 
-                    onTouchEvent(&touchPoint);
-                }
+                touchPoint.x = map(point.x, TS_MAXX, TS_MINX, gfx.width(), 0);
+                touchPoint.y = map(point.y, TS_MINY, TS_MAXY, 0, gfx.height());
+
+                onTouchEvent(&touchPoint);
             }
 
             // RF

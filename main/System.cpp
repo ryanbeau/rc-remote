@@ -124,6 +124,11 @@ void AnalogCalibration::update(uint8_t ms) {
 }
 
 void AnalogCalibration::onTouchEvent(TouchPoint* point) {
+    Serial.print(F("touched event x:"));
+    Serial.print(point->x);
+    Serial.print(F(" y:"));
+    Serial.println(point->y);
+
     // set analog base, min & max
     if (point->x >= 156 && point->x <= 323 && point->y >= 260 && point->y <= 305) {
         leftJoyX->setHomeMinMax(leftJoyX->value);
