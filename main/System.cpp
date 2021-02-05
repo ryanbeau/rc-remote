@@ -37,7 +37,6 @@ void AnalogCalibration::update(uint8_t ms) {
 
         if (_updated & 128) {
             gfx.fillRect(156, 260, 168, 46, bg);
-            _updated ^= 128;
         }
 
         if (_updated & 1) {
@@ -46,7 +45,7 @@ void AnalogCalibration::update(uint8_t ms) {
                 uint16_t x = 58 + (j * 266);
                 for (uint8_t i = 0; i < 2; i++) {
                     // joy circle
-                    if (_updated == 255) {
+                    if (_updated & 128) {
                         gfx.drawFastHLine(x + 44, y + 41 + (i * 15), 10, darkgray);
                         gfx.drawFastHLine(x + 45, y + 42 + (i * 13), 8, lightgray);
                         gfx.drawFastHLine(x + 45, y + 43 + (i * 11), 8, midgray);
@@ -67,6 +66,7 @@ void AnalogCalibration::update(uint8_t ms) {
                             gfx.drawPixel(x + 42 + (i * 13), y + 43 + (k * 11), darkgray);
                             gfx.drawPixel(x + 43 + (i * 11), y + 42 + (k * 13), darkgray);
                         }
+                        _updated ^= 128;
                     } else {
                         // reclamp min/max - if value is below min or above max
                         leftJoyX->reclampMinMax();
@@ -138,7 +138,7 @@ void AnalogCalibration::onTouchEvent(TouchPoint* point) {
         leftTrigger->setHomeMinMax(leftTrigger->value);
         rightTrigger->setHomeMinMax(rightTrigger->value);
 
-        _updated |= 129;
+        _updated = 129;
     }
 }
 
