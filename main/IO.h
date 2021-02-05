@@ -44,16 +44,19 @@ struct DigitalMap {
 struct AnalogMap {
     const eGamepadAnalog inputPin;
     uint16_t value;
-    uint16_t base;
+    uint16_t home;
     uint16_t min;
     uint16_t max;
     bool inverted;
 
-    // setBaseMinMax sets the base, min, max with value.
-    void setBaseMinMax(uint16_t value);
+    // setHomeMinMax sets the home, min, max with value.
+    void setHomeMinMax(uint16_t value);
 
     // reclampMinMax clamps the min and max with value if below min or above max.
     void reclampMinMax();
+
+    // reclampMax clamps the max with value if above max.
+    void reclampMax();
 
     // getMapValue gets the mapped value from base, min, max.
     int16_t getMapValue(int16_t toMin, int16_t toMax);

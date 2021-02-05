@@ -12,7 +12,7 @@
 #define DIGITAL_AMT 12
 #define ANALOG_AMT 7
 
-#define ANALOG_DRIFT 100
+#define ANALOG_DRIFT 150
 #define ANALOG_MIN 0
 #define ANALOG_MID 2047
 #define ANALOG_MAX 4095
@@ -52,8 +52,8 @@ AnalogMap analogMap[ANALOG_AMT] = {
     {eRight_Trigger, ANALOG_MID, ANALOG_MID, ANALOG_MIN, ANALOG_MAX, false},
 };
 
-void AnalogMap::setBaseMinMax(uint16_t val) {
-    base = val;
+void AnalogMap::setHomeMinMax(uint16_t val) {
+    home = val;
     min = val;
     max = val;
 }
@@ -67,6 +67,12 @@ void AnalogMap::reclampMinMax() {
     }
 }
 
+void AnalogMap::reclampMax() {
+    if (max < value) {
+        max = value;
+    }
+}
+
 int16_t AnalogMap::getMapValue(int16_t toMin, int16_t toMax) {
     if (inverted) {
         int16_t temp = toMin;
@@ -74,22 +80,31 @@ int16_t AnalogMap::getMapValue(int16_t toMin, int16_t toMax) {
         toMax = temp;
     }
 
-    int16_t toMid = (toMax-toMin)/2;
-    int16_t val = toMid;
+    if (inputPin == eLeft_Trigger || inputPin == eRight_Trigger || inputPin == eVoltage) {
+        if (value <= home + ANALOG_DRIFT) {
+            return toMin;  // toMin -> below home plus drift
+        }
+        if (value + ANALOG_DRIFT >= max) {
+            return toMax;  // toMax -> above max minus drift
+        }
+        return map(value, home + ANALOG_DRIFT, max - ANALOG_DRIFT, toMin, toMax);
+    } else {
+        int16_t toMid = (toMax - toMin) / 2 + toMin;
+        if (value + ANALOG_DRIFT >= home && value <= home + ANALOG_DRIFT) {
+            return toMid;  // toMid -> in home position +/- drift
+        }
+        if (value <= min + ANALOG_DRIFT) {
+            return toMin;  // toMin -> below min plus drift
+        }
+        if (value + ANALOG_DRIFT >= max) {
+            return toMax;  // toMax -> above max minus drift
+        }
 
-    if (value < min + ANALOG_DRIFT) {
-        val = toMin;
-    } else if (value > max - ANALOG_DRIFT) {
-        val = toMax;   
-    } else if (value < base - ANALOG_DRIFT) {
-        val = map(value, min + ANALOG_DRIFT, base - ANALOG_DRIFT, toMin, toMid);
-    } else if (value > base + ANALOG_DRIFT) {
-        val = map(value, base + ANALOG_DRIFT, max - ANALOG_DRIFT, toMid, toMax);
-    } else if (inputPin == eLeft_Trigger || inputPin == eRight_Trigger) {
-        val = toMin;
+        if (value < home) {
+            return map(value, min + ANALOG_DRIFT, home - ANALOG_DRIFT, toMin, toMid);
+        }
+        return map(value, home + ANALOG_DRIFT, max - ANALOG_DRIFT, toMid, toMax);
     }
-
-    return val;
 }
 
 AnalogMap* getAnalogMap(eGamepadAnalog gamepadAnalog) {

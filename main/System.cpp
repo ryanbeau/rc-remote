@@ -25,12 +25,12 @@ void AnalogCalibration::update(uint8_t ms) {
             vTaskDelay(xDelay);
 
             // set analog base, min & max
-            leftJoyX->setBaseMinMax(leftJoyX->value);
-            leftJoyY->setBaseMinMax(leftJoyY->value);
-            rightJoyX->setBaseMinMax(rightJoyX->value);
-            rightJoyY->setBaseMinMax(rightJoyY->value);
-            leftTrigger->setBaseMinMax(leftTrigger->value);
-            rightTrigger->setBaseMinMax(rightTrigger->value);
+            leftJoyX->setHomeMinMax(leftJoyX->value);
+            leftJoyY->setHomeMinMax(leftJoyY->value);
+            rightJoyX->setHomeMinMax(rightJoyX->value);
+            rightJoyY->setHomeMinMax(rightJoyY->value);
+            leftTrigger->setHomeMinMax(leftTrigger->value);
+            rightTrigger->setHomeMinMax(rightTrigger->value);
         }
 
         const uint16_t y = 102;
@@ -65,8 +65,8 @@ void AnalogCalibration::update(uint8_t ms) {
                     leftJoyY->reclampMinMax();
                     rightJoyX->reclampMinMax();
                     rightJoyY->reclampMinMax();
-                    leftTrigger->reclampMinMax();
-                    rightTrigger->reclampMinMax();
+                    leftTrigger->reclampMax();
+                    rightTrigger->reclampMax();
                 }
 
                 // joy axis
@@ -82,7 +82,7 @@ void AnalogCalibration::update(uint8_t ms) {
             // joy axis X
             int16_t valX = j == 0 ? leftJoyX->getMapValue(-36, 36) : rightJoyX->getMapValue(-36, 36);
             if (valX < 0) {
-                uint16_t color = valX > -36 ? white : green;
+                uint16_t color = valX < 36 ? white : green;
                 gfx.fillRect(x + 37 + valX, y + 48, -valX, 2, color);
             } else if (valX > 0) {
                 uint16_t color = valX < 36 ? white : green;
@@ -92,7 +92,7 @@ void AnalogCalibration::update(uint8_t ms) {
             // joy axis Y
             int16_t valY = j == 0 ? leftJoyY->getMapValue(-36, 36) : rightJoyY->getMapValue(-36, 36);
             if (valY < 0) {
-                uint16_t color = valY > -36 ? white : green;
+                uint16_t color = valY < 36 ? white : green;
                 gfx.fillRect(x + 48, y + 37 + valY, 2, -valY, color);
             } else if (valY > 0) {
                 uint16_t color = valY < 36 ? white : green;
