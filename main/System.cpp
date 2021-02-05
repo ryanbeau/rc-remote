@@ -77,22 +77,26 @@ void AnalogCalibration::update(uint8_t ms) {
                 gfx.drawRect(x + (i * 60), y + 47, 38, 4, darkgray);
                 gfx.drawFastHLine(x + 1 + (i * 60), y + 48, 36, midgray);
                 gfx.drawFastHLine(x + 1 + (i * 60), y + 49, 36, lightgray);
+            }
 
-                int16_t valX = j == 0 ? leftJoyX->getMapValue(0, 36) : rightJoyX->getMapValue(0, 36);
-                if (i == 0 && valX < 0) {
-                    gfx.fillRect(x + 37 + valX, y + 48, -valX, 2, valX < 36 ? white : green);
-                }
-                if (i == 1 && valX > 0) {
-                    gfx.fillRect(x + 61, y + 48, valX, 2, valX < 36 ? white : green);
-                }
+            // joy axis X
+            int16_t valX = j == 0 ? leftJoyX->getMapValue(-36, 36) : rightJoyX->getMapValue(-36, 36);
+            if (valX < 0) {
+                uint16_t color = valX > -36 ? white : green;
+                gfx.fillRect(x + 37 + valX, y + 48, -valX, 2, color);
+            } else if (valX > 0) {
+                uint16_t color = valX < 36 ? white : green;
+                gfx.fillRect(x + 61, y + 48, valX, 2, color);
+            }
 
-                int16_t valY = j == 0 ? leftJoyY->getMapValue(0, 36) : rightJoyY->getMapValue(0, 36);
-                if (i == 0 && valY < 0) {
-                    gfx.fillRect(x + 48, y + 37 + valY, 2, -valY, valY < 36 ? white : green);
-                }
-                if (i == 1 && valY > 0) {
-                    gfx.fillRect(x + 48, y + 61, 2, valY, valY < 36 ? white : green);
-                }
+            // joy axis Y
+            int16_t valY = j == 0 ? leftJoyY->getMapValue(-36, 36) : rightJoyY->getMapValue(-36, 36);
+            if (valY < 0) {
+                uint16_t color = valY > -36 ? white : green;
+                gfx.fillRect(x + 48, y + 37 + valY, 2, -valY, color);
+            } else if (valY > 0) {
+                uint16_t color = valY < 36 ? white : green;
+                gfx.fillRect(x + 48, y + 61, 2, valY, color);
             }
 
             // trigger axis
@@ -103,7 +107,8 @@ void AnalogCalibration::update(uint8_t ms) {
 
             uint16_t valTrig = j == 0 ? leftTrigger->getMapValue(0, 60) : rightTrigger->getMapValue(0, 60);
             if (valTrig > 0) {
-                gfx.fillRect(x + 1 + (j * 38), y + 1 + (60 - valTrig), 2, valTrig, white);
+                uint16_t color = valTrig < 60 ? white : green;
+                gfx.fillRect(x + 1 + (j * 38), y + 61 - valTrig, 2, valTrig, color);
             }
         }
 
