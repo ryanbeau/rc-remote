@@ -32,12 +32,19 @@ void AnalogCalibration::update(uint8_t ms) {
             leftTrigger = getAnalogMap(eGamepadAnalog::eLeft_Trigger);
             rightTrigger = getAnalogMap(eGamepadAnalog::eRight_Trigger);
 
-            _updated = 0;
+            leftJoyX->setHomeMinMax(leftJoyX->value);
+            leftJoyY->setHomeMinMax(leftJoyY->value);
+            rightJoyX->setHomeMinMax(rightJoyX->value);
+            rightJoyY->setHomeMinMax(rightJoyY->value);
+            leftTrigger->setHomeMinMax(leftTrigger->value);
+            rightTrigger->setHomeMinMax(rightTrigger->value);
+
+            _updated = 129;
         }
 
-        if (_updated & 128) {
-            gfx.fillRect(156, 260, 168, 46, bg);
-        }
+        // if (_updated & 128) {
+        //     gfx.fillRect(156, 260, 168, 46, bg);
+        // }
 
         if (_updated & 1) {
             const uint16_t y = 102;
@@ -124,22 +131,17 @@ void AnalogCalibration::update(uint8_t ms) {
 }
 
 void AnalogCalibration::onTouchEvent(TouchPoint* point) {
-    Serial.print(F("touched event x:"));
-    Serial.print(point->x);
-    Serial.print(F(" y:"));
-    Serial.println(point->y);
-
     // set analog base, min & max
-    if (point->x >= 156 && point->x <= 323 && point->y >= 260 && point->y <= 305) {
-        leftJoyX->setHomeMinMax(leftJoyX->value);
-        leftJoyY->setHomeMinMax(leftJoyY->value);
-        rightJoyX->setHomeMinMax(rightJoyX->value);
-        rightJoyY->setHomeMinMax(rightJoyY->value);
-        leftTrigger->setHomeMinMax(leftTrigger->value);
-        rightTrigger->setHomeMinMax(rightTrigger->value);
+    // if (point->x >= 156 && point->x <= 323 && point->y >= 260 && point->y <= 305) {
+    //     leftJoyX->setHomeMinMax(leftJoyX->value);
+    //     leftJoyY->setHomeMinMax(leftJoyY->value);
+    //     rightJoyX->setHomeMinMax(rightJoyX->value);
+    //     rightJoyY->setHomeMinMax(rightJoyY->value);
+    //     leftTrigger->setHomeMinMax(leftTrigger->value);
+    //     rightTrigger->setHomeMinMax(rightTrigger->value);
 
-        _updated = 129;
-    }
+    //     _updated = 129;
+    // }
 }
 
 void setScreen(Screen* s) {
@@ -167,11 +169,6 @@ void update() {
 }
 
 void onGamepadEvent(GamepadEvent* e) {
-    Serial.print(F("button:"));
-    Serial.print(e->digital->inputPin % MCP_PIN_BIT);
-    Serial.print(F(" value:"));
-    Serial.println(e->digital->value);
-
     if (screen) screen->onGamepadEvent(e);
 }
 

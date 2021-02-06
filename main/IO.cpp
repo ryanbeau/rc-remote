@@ -125,6 +125,11 @@ AnalogMap* getAnalogMap(eGamepadAnalog gamepadAnalog) {
 void handleDigitalEvent(DigitalMap* map) {
     GamepadEvent ev = {digital : map};
 
+    Serial.print(F("button:"));
+    Serial.print(map->inputPin % MCP_PIN_BIT);
+    Serial.print(F(" value:"));
+    Serial.println(map->value);
+
     onGamepadEvent(&ev);
 }
 
@@ -141,7 +146,6 @@ void IRAM_ATTR isrRFHandler() {
 }
 
 void IRAM_ATTR isrTouchHandler() {
-    Serial.print(F("touched isr handler"));
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     xTaskNotifyFromISR(inputHandlingTask, TOUCH_TASK_BIT, eSetBits, &xHigherPriorityTaskWoken);
     portYIELD_FROM_ISR();
@@ -204,17 +208,23 @@ void inputTask(void* arg) {
         if (xResult == pdPASS) {
             // Touch
             if (notifiedValue & TOUCH_TASK_BIT) {
-                point = touch.getPoint();
+                if (!touch.bufferEmpty()) {
+                    point = touch.getPoint();
 
-                Serial.print(F("touched task x:"));
-                Serial.print(point.x);
-                Serial.print(F(" y:"));
-                Serial.println(point.y);
+                    touchPoint.x = map(point.x, TS_MINX, TS_MAXX, 0, gfx.width());
+                    touchPoint.y = map(point.y, TS_MINY, TS_MAXY, 0, gfx.height());
 
-                touchPoint.x = map(point.x, TS_MAXX, TS_MINX, gfx.width(), 0);
-                touchPoint.y = map(point.y, TS_MINY, TS_MAXY, 0, gfx.height());
+                    Serial.print(F("touched x:"));
+                    Serial.print(point.x);
+                    Serial.print(F("->"));
+                    Serial.print(touchPoint.x);
+                    Serial.print(F(" y:"));
+                    Serial.println(point.y);
+                    Serial.print(F("->"));
+                    Serial.println(touchPoint.y);
 
-                onTouchEvent(&touchPoint);
+                    onTouchEvent(&touchPoint);
+                }
             }
 
             // RF
@@ -265,7 +275,9 @@ void initIO() {
         attachInterrupt(RF_IRQ_PIN, isrRFHandler, PULLDOWN);
 
         // touch - STMPE610
-        touch.begin();
+        if (!touch.begin()) {
+            Serial.println(F("Touch.begin() failed"));
+        }
         pinMode(STMPE_IRQ_PIN, INPUT);
         attachInterrupt(STMPE_IRQ_PIN, isrTouchHandler, PULLDOWN);
 
