@@ -62,9 +62,6 @@ struct AnalogMap {
 
     // getPercentValue gets the percent value -100 to 100 if joystick, 0 to 100 if trigger or voltage.
     int8_t getPercentValue();
-
-    // isCalibrated returns whether the analog is calibrated.
-    bool isCalibrated();
 };
 
 struct GamepadEvent {
@@ -93,5 +90,8 @@ extern void initIO();
 
 // getAnalogMap returns the specific AnalogMap.
 extern AnalogMap* getAnalogMap(eGamepadAnalog gamepadAnalog);
+
+// isAnalogCalibrated returns whether the analog inputs are calibrated.
+extern bool isAnalogCalibrated();
 
 #endif

@@ -133,13 +133,6 @@ int16_t AnalogMap::getMapValue(int16_t toMin, int16_t toMax) {
     }
 }
 
-bool AnalogMap::isCalibrated() {
-    if (inputPin == eLeft_Trigger || inputPin == eRight_Trigger || inputPin == eVoltage) {
-        return home + ANALOG_TRIGGER_MIN + ANALOG_TRIGGER_MAX < max;
-    }
-    return min + ANALOG_JOY_MAX + ANALOG_JOY_MIN < home && home + ANALOG_JOY_MIN + ANALOG_JOY_MAX < max;
-}
-
 AnalogMap* getAnalogMap(eGamepadAnalog gamepadAnalog) {
     for (uint8_t i = 0; i < ANALOG_AMT; i++) {
         if (analogMap[i]->inputPin == gamepadAnalog) {
@@ -341,4 +334,17 @@ void initIO() {
 
         initialized = true;
     }
+}
+
+bool isCalibrated(AnalogMap& a) {
+    if (a.inputPin == eLeft_Trigger || a.inputPin == eRight_Trigger || a.inputPin == eVoltage) {
+        return a.home + ANALOG_TRIGGER_MIN + ANALOG_TRIGGER_MAX < a.max;
+    }
+    return a.min + ANALOG_JOY_MAX + ANALOG_JOY_MIN < a.home && a.home + ANALOG_JOY_MIN + ANALOG_JOY_MAX < a.max;
+}
+
+bool isAnalogCalibrated() {
+    return isCalibrated(leftJoyX) && isCalibrated(leftJoyY) && 
+        isCalibrated(rightJoyX) && isCalibrated(rightJoyY) &&
+        isCalibrated(leftTrigger) && isCalibrated(rightTrigger);
 }

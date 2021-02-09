@@ -1,8 +1,8 @@
 #include "Calibration.h"
 
-#define CALIBRATION_RUNNING 1
-#define CALIBRATION_FINISHED 64
-#define CALIBRATION_ON_START 128
+#define CALIBRATION_ON_START 0x02
+#define CALIBRATION_RUNNING 0x04
+#define CALIBRATION_FINISHED 0x80
 #define ALIGN_CENTER 0
 #define ALIGN_LEFT -1
 #define ALIGN_RIGHT 1
@@ -158,12 +158,12 @@ void AnalogCalibration::update(uint8_t ms) {
             gfx.setCursor(147, 212);
             gfx.print(F("centered before pressing Start."));
 
-            gfx.drawRoundRect(170, 70, 140, 75, 8, white); // controller
-            gfx.drawCircle(190, 106, 10, white); // left joy
-            gfx.fillRect(189, 105, 3, 3, white); // left joy knob
-            gfx.drawCircle(289, 106, 10, white); // right joy
-            gfx.fillRect(288, 105, 3, 3, white); // right joy knob
-            gfx.drawRect(209, 104, 62, 35, white); // screen
+            gfx.drawRoundRect(170, 70, 140, 75, 8, white);  // controller
+            gfx.drawCircle(190, 106, 10, white);            // left joy
+            gfx.fillRect(189, 105, 3, 3, white);            // left joy knob
+            gfx.drawCircle(289, 106, 10, white);            // right joy
+            gfx.fillRect(288, 105, 3, 3, white);            // right joy knob
+            gfx.drawRect(209, 104, 62, 35, white);          // screen
             // left dpad
             gfx.fillRect(182, 124, 3, 3, white);
             gfx.fillRect(179, 127, 9, 3, white);
@@ -186,8 +186,8 @@ void AnalogCalibration::update(uint8_t ms) {
         if (_updated & CALIBRATION_RUNNING) {
             if (_updated & CALIBRATION_ON_START) {
                 gfx.fillRect(156, 260, 168, 46, bg);  // erase button
-                gfx.fillRect(170, 70, 140, 75, bg); // erase controller icon
-                gfx.fillRect(147, 200, 186, 20, bg); // erase warning text
+                gfx.fillRect(170, 70, 140, 75, bg);   // erase controller icon
+                gfx.fillRect(147, 200, 186, 20, bg);  // erase warning text
 
                 gfx.setTextColor(lightergray, bg);
 
@@ -212,10 +212,7 @@ void AnalogCalibration::update(uint8_t ms) {
             leftTrigger.reclampMax();
             rightTrigger.reclampMax();
 
-            if (((_updated & CALIBRATION_FINISHED) == 0) &&
-                leftJoyX.isCalibrated() && leftJoyY.isCalibrated() && rightJoyX.isCalibrated() && rightJoyY.isCalibrated() && 
-                leftTrigger.isCalibrated() && rightTrigger.isCalibrated()) {
-
+            if (!(_updated & CALIBRATION_FINISHED) && isAnalogCalibrated()) {
                 gfx.fillRoundRect(157, 200, 166, 40, 8, white);
 
                 gfx.setTextColor(bg);
@@ -271,22 +268,18 @@ void AnalogCalibration::update(uint8_t ms) {
 
 void AnalogCalibration::onTouchEvent(TouchPoint* point) {
     // set analog base, min & max
-    if (!(_updated & CALIBRATION_RUNNING)) {
-        if (point->x >= 157 && point->x <= 157 + 166 && point->y >= 260 && point->y <= 260 + 40) {
-            leftJoyX.setHomeMinMax(leftJoyX.value);
-            leftJoyY.setHomeMinMax(leftJoyY.value);
-            rightJoyX.setHomeMinMax(rightJoyX.value);
-            rightJoyY.setHomeMinMax(rightJoyY.value);
-            leftTrigger.setHomeMinMax(leftTrigger.value);
-            rightTrigger.setHomeMinMax(rightTrigger.value);
+    if (!(_updated & CALIBRATION_RUNNING) && point->x >= 157 && point->x <= 323 && point->y >= 260 && point->y <= 300) {
+        leftJoyX.setHomeMinMax(leftJoyX.value);
+        leftJoyY.setHomeMinMax(leftJoyY.value);
+        rightJoyX.setHomeMinMax(rightJoyX.value);
+        rightJoyY.setHomeMinMax(rightJoyY.value);
+        leftTrigger.setHomeMinMax(leftTrigger.value);
+        rightTrigger.setHomeMinMax(rightTrigger.value);
 
-            _updated = CALIBRATION_ON_START | CALIBRATION_RUNNING;
-        }
+        _updated = CALIBRATION_ON_START | CALIBRATION_RUNNING;
     }
 
-    if (_updated & CALIBRATION_FINISHED) {
-        if (point->x >= 157 && point->x <= 157 + 166 && point->y >= 200 && point->y <= 200 + 40) {
-            // complete calibration
-        }
+    if (_updated & CALIBRATION_FINISHED && point->x >= 157 && point->x <= 157 + 166 && point->y >= 200 && point->y <= 200 + 40) {
+        // complete calibration
     }
 }
