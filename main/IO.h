@@ -59,6 +59,12 @@ struct AnalogMap {
 
     // getMapValue gets the mapped value from base, min, max.
     int16_t getMapValue(int16_t toMin, int16_t toMax);
+
+    // getPercentValue gets the percent value -100 to 100 if joystick, 0 to 100 if trigger or voltage.
+    int8_t getPercentValue();
+
+    // isCalibrated returns whether the analog is calibrated.
+    bool isCalibrated();
 };
 
 struct GamepadEvent {
@@ -75,6 +81,12 @@ struct Payload {
 };
 
 extern Adafruit_HX8357 gfx;
+extern AnalogMap leftJoyX;
+extern AnalogMap leftJoyY;
+extern AnalogMap rightJoyX;
+extern AnalogMap rightJoyY;
+extern AnalogMap leftTrigger;
+extern AnalogMap rightTrigger;
 
 // initIO initializes all default or eeprom stored input/output devices and values.
 extern void initIO();

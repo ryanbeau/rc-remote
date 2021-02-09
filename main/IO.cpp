@@ -13,7 +13,11 @@
 #define DIGITAL_AMT 12
 #define ANALOG_AMT 7
 
-#define ANALOG_DRIFT 150
+#define ANALOG_JOY_MIN 250
+#define ANALOG_JOY_MAX 150
+
+#define ANALOG_TRIGGER_MIN 200
+#define ANALOG_TRIGGER_MAX 350
 #define ANALOG_MIN 0
 #define ANALOG_MID 2047
 #define ANALOG_MAX 4095
@@ -34,6 +38,14 @@ Adafruit_MCP23017 mcp;
 xQueueHandle digitalInterruptQueue = NULL;
 static TaskHandle_t inputHandlingTask;
 
+AnalogMap voltage = {eVoltage, ANALOG_MIN, ANALOG_MIN, ANALOG_MIN, ANALOG_MAX, false};
+AnalogMap leftJoyX = {eLeft_JoyX, ANALOG_MID, ANALOG_MID, ANALOG_MIN, ANALOG_MAX, false};
+AnalogMap leftJoyY = {eLeft_JoyY, ANALOG_MID, ANALOG_MID, ANALOG_MIN, ANALOG_MAX, true};
+AnalogMap rightJoyX = {eRight_JoyX, ANALOG_MID, ANALOG_MID, ANALOG_MIN, ANALOG_MAX, true};
+AnalogMap rightJoyY = {eRight_JoyY, ANALOG_MID, ANALOG_MID, ANALOG_MIN, ANALOG_MAX, false};
+AnalogMap leftTrigger = {eLeft_Trigger, ANALOG_MID, ANALOG_MID, ANALOG_MIN, ANALOG_MAX, false};
+AnalogMap rightTrigger = {eRight_Trigger, ANALOG_MID, ANALOG_MID, ANALOG_MIN, ANALOG_MAX, false};
+
 DigitalMap digitalMap[DIGITAL_AMT] = {
     {eLeft_DpadUp, false},
     {eLeft_DpadDown, false},
@@ -49,14 +61,14 @@ DigitalMap digitalMap[DIGITAL_AMT] = {
     {eRight_Aux, false},
 };
 
-AnalogMap analogMap[ANALOG_AMT] = {
-    {eVoltage, ANALOG_MIN, ANALOG_MIN, ANALOG_MIN, ANALOG_MAX, false},
-    {eLeft_JoyX, ANALOG_MID, ANALOG_MID, ANALOG_MIN, ANALOG_MAX, false},
-    {eLeft_JoyY, ANALOG_MID, ANALOG_MID, ANALOG_MIN, ANALOG_MAX, true},
-    {eRight_JoyX, ANALOG_MID, ANALOG_MID, ANALOG_MIN, ANALOG_MAX, true},
-    {eRight_JoyY, ANALOG_MID, ANALOG_MID, ANALOG_MIN, ANALOG_MAX, false},
-    {eLeft_Trigger, ANALOG_MID, ANALOG_MID, ANALOG_MIN, ANALOG_MAX, false},
-    {eRight_Trigger, ANALOG_MID, ANALOG_MID, ANALOG_MIN, ANALOG_MAX, false},
+AnalogMap* analogMap[ANALOG_AMT] = {
+    &voltage,
+    &leftJoyX,
+    &leftJoyY,
+    &rightJoyX,
+    &rightJoyY,
+    &leftTrigger,
+    &rightTrigger,
 };
 
 void AnalogMap::setHomeMinMax(uint16_t val) {
@@ -80,6 +92,13 @@ void AnalogMap::reclampMax() {
     }
 }
 
+int8_t AnalogMap::getPercentValue() {
+    if (inputPin == eLeft_Trigger || inputPin == eRight_Trigger || inputPin == eVoltage) {
+        return getMapValue(0, 100);
+    }
+    return getMapValue(-100, 100);
+}
+
 int16_t AnalogMap::getMapValue(int16_t toMin, int16_t toMax) {
     if (inverted) {
         int16_t temp = toMin;
@@ -88,36 +107,43 @@ int16_t AnalogMap::getMapValue(int16_t toMin, int16_t toMax) {
     }
 
     if (inputPin == eLeft_Trigger || inputPin == eRight_Trigger || inputPin == eVoltage) {
-        if (value <= home + ANALOG_DRIFT) {
+        if (value <= home + ANALOG_TRIGGER_MIN) {
             return toMin;  // toMin -> below home plus drift
         }
-        if (value + ANALOG_DRIFT >= max) {
+        if (value + ANALOG_TRIGGER_MAX >= max) {
             return toMax;  // toMax -> above max minus drift
         }
-        return map(value, home + ANALOG_DRIFT, max - ANALOG_DRIFT, toMin, toMax);
+        return map(value, home + ANALOG_TRIGGER_MIN, max - ANALOG_TRIGGER_MAX, toMin, toMax);
     } else {
         int16_t toMid = (toMax - toMin) / 2 + toMin;
-        if (value + ANALOG_DRIFT >= home && value <= home + ANALOG_DRIFT) {
+        if (value + ANALOG_JOY_MIN >= home && value <= home + ANALOG_JOY_MIN) {
             return toMid;  // toMid -> in home position +/- drift
         }
-        if (value <= min + ANALOG_DRIFT) {
+        if (value <= min + ANALOG_JOY_MAX) {
             return toMin;  // toMin -> below min plus drift
         }
-        if (value + ANALOG_DRIFT >= max) {
+        if (value + ANALOG_JOY_MAX >= max) {
             return toMax;  // toMax -> above max minus drift
         }
 
         if (value < home) {
-            return map(value, min + ANALOG_DRIFT, home - ANALOG_DRIFT, toMin, toMid);
+            return map(value, min + ANALOG_JOY_MAX, home - ANALOG_JOY_MIN, toMin, toMid);
         }
-        return map(value, home + ANALOG_DRIFT, max - ANALOG_DRIFT, toMid, toMax);
+        return map(value, home + ANALOG_JOY_MIN, max - ANALOG_JOY_MAX, toMid, toMax);
     }
+}
+
+bool AnalogMap::isCalibrated() {
+    if (inputPin == eLeft_Trigger || inputPin == eRight_Trigger || inputPin == eVoltage) {
+        return home + ANALOG_TRIGGER_MIN + ANALOG_TRIGGER_MAX < max;
+    }
+    return min + ANALOG_JOY_MAX + ANALOG_JOY_MIN < home && home + ANALOG_JOY_MIN + ANALOG_JOY_MAX < max;
 }
 
 AnalogMap* getAnalogMap(eGamepadAnalog gamepadAnalog) {
     for (uint8_t i = 0; i < ANALOG_AMT; i++) {
-        if (analogMap[i].inputPin == gamepadAnalog) {
-            return &analogMap[i];
+        if (analogMap[i]->inputPin == gamepadAnalog) {
+            return analogMap[i];
         }
     }
 }
@@ -163,9 +189,9 @@ void inputAnalogTask(void* arg) {
 
     while (1) {
         for (uint8_t i = 0; i < ANALOG_AMT; i++) {
-            analogMap[i].value = analogRead(analogMap[i].inputPin);  // range: 0 to 4095
+            analogMap[i]->value = analogRead(analogMap[i]->inputPin);  // range: 0 to 4095
 
-            if (analogMap[i].inputPin == eLeft_Trigger || analogMap[i].inputPin == eRight_Trigger) {
+            if (analogMap[i]->inputPin == eLeft_Trigger || analogMap[i]->inputPin == eRight_Trigger) {
                 // TODO : handle trigger value
             } else {
                 // TODO : handle joystick value
@@ -201,25 +227,29 @@ void inputTask(void* arg) {
     TouchPoint touchPoint;
     uint8_t pipe;
 
+    if (!touch.begin()) {
+        Serial.println(F("Touch.begin() failed"));
+    }
+
     while (1) {
         // wait to be notified of an interrupt
-        xResult = xTaskNotifyWait(pdFALSE, ULONG_MAX, &notifiedValue, portMAX_DELAY);
+        xResult = xTaskNotifyWait(ULONG_MAX, ULONG_MAX, &notifiedValue, portMAX_DELAY);
 
         if (xResult == pdPASS) {
             // Touch
             if (notifiedValue & TOUCH_TASK_BIT) {
-                if (!touch.bufferEmpty()) {
-                    point = touch.getPoint();
+                point = touch.getPoint();
 
-                    touchPoint.x = map(point.x, TS_MINX, TS_MAXX, 0, gfx.width());
-                    touchPoint.y = map(point.y, TS_MINY, TS_MAXY, 0, gfx.height());
+                if (point.y >= TS_MINX && point.y <= TS_MAXX && point.x >= TS_MINY && point.x <= TS_MAXY) {
+                    touchPoint.x = map(point.y, TS_MINX, TS_MAXX, 0, gfx.width());
+                    touchPoint.y = map(point.x, TS_MINY, TS_MAXY, gfx.height(), 0);
 
-                    Serial.print(F("touched x:"));
+                    Serial.print(F("x:"));
                     Serial.print(point.x);
                     Serial.print(F("->"));
                     Serial.print(touchPoint.x);
                     Serial.print(F(" y:"));
-                    Serial.println(point.y);
+                    Serial.print(point.y);
                     Serial.print(F("->"));
                     Serial.println(touchPoint.y);
 
@@ -245,6 +275,10 @@ void inputTask(void* arg) {
                     if (digitalMap[i].inputPin % MCP_PIN_BIT == pin && digitalMap[i].value != value) {
                         digitalMap[i].value = value;
 
+                        if (pin == eLeft_Bumper) {
+                            touch.writeRegister8(STMPE_INT_STA, 0xFF);
+                        }
+
                         handleDigitalEvent(&digitalMap[i]);
                     }
                 }
@@ -264,6 +298,7 @@ void initIO() {
 
         gfx.begin();
         gfx.setRotation(1);
+        gfx.invertDisplay(false); //prevent randomly inverted tft when power is flickered off/on
 
         // radio - RF24
         radio.begin();
@@ -275,11 +310,8 @@ void initIO() {
         attachInterrupt(RF_IRQ_PIN, isrRFHandler, PULLDOWN);
 
         // touch - STMPE610
-        if (!touch.begin()) {
-            Serial.println(F("Touch.begin() failed"));
-        }
-        pinMode(STMPE_IRQ_PIN, INPUT);
-        attachInterrupt(STMPE_IRQ_PIN, isrTouchHandler, PULLDOWN);
+        pinMode(STMPE_IRQ_PIN, INPUT_PULLDOWN);
+        attachInterrupt(STMPE_IRQ_PIN, isrTouchHandler, CHANGE);
 
         // mcp port extender
         mcp.begin();
@@ -303,7 +335,7 @@ void initIO() {
         }
 
         // tasks
-        xTaskCreatePinnedToCore(&inputTask, "inputIO", 1500, NULL, 13, &inputHandlingTask, IO_CORE);
+        xTaskCreatePinnedToCore(&inputTask, "inputIO", 2048, NULL, 13, &inputHandlingTask, IO_CORE);
         xTaskCreatePinnedToCore(&inputDigitalTask, "digitalIO", 1500, NULL, 11, NULL, IO_CORE);
         xTaskCreatePinnedToCore(&inputAnalogTask, "analogIO", 1500, NULL, 12, NULL, IO_CORE);
 

@@ -1,10 +1,12 @@
-# rc-remote
-RC Remote controller with screen
+# RC Remote 
+Controller with screen 3.5" resistive touch screen.
 
-![Image of ESP32](ESP32.jpg)
+![Image of RC Controller](controller.jpg)
 
 Pin Addressing
 ==============
+
+![Image of ESP32](ESP32.jpg)
 
 GPIO pins and their associated device.
 GPA & GPB pins are on the registers A & B on the MCP23017.
