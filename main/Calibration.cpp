@@ -19,6 +19,68 @@ const uint16_t darkgray = RGB565(57, 57, 57);
 const uint16_t darkergray = RGB565(32, 32, 32);
 const uint16_t green = RGB565(0, 255, 0);
 
+void drawCalibrationStart() {
+    gfx.fillScreen(bg);
+
+    gfx.setTextColor(white, bg);
+
+    gfx.setCursor(174, 17);
+    gfx.print(F("Controller Calibration"));
+
+    gfx.setCursor(150, 200);
+    gfx.print(F("Ensure the control sticks are"));
+    gfx.setCursor(150, 212);
+    gfx.print(F("centered before pressing Start"));
+
+    gfx.drawRoundRect(170, 70, 140, 75, 8, white);  // controller
+    gfx.drawCircle(190, 106, 10, white);            // left joy
+    gfx.fillRect(189, 105, 3, 3, white);            // left joy knob
+    gfx.drawCircle(289, 106, 10, white);            // right joy
+    gfx.fillRect(288, 105, 3, 3, white);            // right joy knob
+    gfx.drawRect(209, 104, 62, 35, white);          // screen
+    // left dpad
+    gfx.fillRect(182, 124, 3, 3, white);
+    gfx.fillRect(179, 127, 9, 3, white);
+    gfx.fillRect(182, 130, 3, 3, white);
+    // right dpad
+    gfx.fillRect(295, 124, 3, 3, white);
+    gfx.fillRect(292, 127, 9, 3, white);
+    gfx.fillRect(295, 130, 3, 3, white);
+
+    // start button
+    gfx.fillRoundRect(157, 260, 166, 40, 8, white);
+    gfx.setTextColor(bg);
+    gfx.setCursor(225, 276);
+    gfx.print(F("START"));
+}
+
+void drawCalibrationScreen() {
+    gfx.fillRect(156, 260, 168, 46, bg);  // erase button
+    gfx.fillRect(170, 70, 140, 75, bg);   // erase controller icon
+    gfx.fillRect(147, 200, 186, 20, bg);  // erase warning text
+
+    gfx.setTextColor(lightergray, bg);
+
+    gfx.setCursor(70, 60);
+    gfx.print(F("Left Joystick"));
+
+    gfx.setCursor(217, 60);
+    gfx.print(F("Triggers"));
+
+    gfx.setCursor(331, 60);
+    gfx.print(F("Right Joystick"));
+
+    gfx.setCursor(23, 295);
+    gfx.print(F("Push the joysticks and triggers to their maximum range in all directions."));
+}
+
+void drawButtonComplete() {
+    gfx.fillRoundRect(157, 200, 166, 40, 8, white);
+    gfx.setTextColor(bg);
+    gfx.setCursor(216, 216);
+    gfx.print(F("COMPLETE"));
+}
+
 void drawPercent(uint16_t leftX, uint16_t topY, int8_t align, uint8_t p) {
     uint16_t cursorX = leftX;
 
@@ -146,62 +208,13 @@ void AnalogCalibration::updateTrigger(uint8_t trigger, uint8_t percent) {
 void AnalogCalibration::update(uint8_t ms) {
     if (_updated) {
         if (_updated == 255) {
-            gfx.fillScreen(bg);
-
-            gfx.setTextColor(white, bg);
-
-            gfx.setCursor(174, 17);
-            gfx.print(F("Controller Calibration"));
-
-            gfx.setCursor(150, 200);
-            gfx.print(F("Ensure the control sticks are"));
-            gfx.setCursor(150, 212);
-            gfx.print(F("centered before pressing Start"));
-
-            gfx.drawRoundRect(170, 70, 140, 75, 8, white);  // controller
-            gfx.drawCircle(190, 106, 10, white);            // left joy
-            gfx.fillRect(189, 105, 3, 3, white);            // left joy knob
-            gfx.drawCircle(289, 106, 10, white);            // right joy
-            gfx.fillRect(288, 105, 3, 3, white);            // right joy knob
-            gfx.drawRect(209, 104, 62, 35, white);          // screen
-            // left dpad
-            gfx.fillRect(182, 124, 3, 3, white);
-            gfx.fillRect(179, 127, 9, 3, white);
-            gfx.fillRect(182, 130, 3, 3, white);
-            // right dpad
-            gfx.fillRect(295, 124, 3, 3, white);
-            gfx.fillRect(292, 127, 9, 3, white);
-            gfx.fillRect(295, 130, 3, 3, white);
-
-            // start button
-            gfx.fillRoundRect(157, 260, 166, 40, 8, white);
-
-            gfx.setTextColor(bg);
-            gfx.setCursor(225, 276);
-            gfx.print(F("START"));
-
+            drawCalibrationStart();
             _updated = 0;
         }
 
         if (_updated & CALIBRATION_RUNNING) {
             if (_updated & CALIBRATION_ON_START) {
-                gfx.fillRect(156, 260, 168, 46, bg);  // erase button
-                gfx.fillRect(170, 70, 140, 75, bg);   // erase controller icon
-                gfx.fillRect(147, 200, 186, 20, bg);  // erase warning text
-
-                gfx.setTextColor(lightergray, bg);
-
-                gfx.setCursor(70, 60);
-                gfx.print(F("Left Joystick"));
-
-                gfx.setCursor(217, 60);
-                gfx.print(F("Triggers"));
-
-                gfx.setCursor(331, 60);
-                gfx.print(F("Right Joystick"));
-
-                gfx.setCursor(23, 295);
-                gfx.print(F("Push the joysticks and triggers to their maximum range in all directions."));
+                drawCalibrationScreen();
             }
 
             // reclamp min/max - if value is below min or above max
@@ -213,12 +226,7 @@ void AnalogCalibration::update(uint8_t ms) {
             rightTrigger.reclampMinMax();
 
             if (!(_updated & CALIBRATION_FINISHED) && isAnalogCalibrated()) {
-                gfx.fillRoundRect(157, 200, 166, 40, 8, white);
-
-                gfx.setTextColor(bg);
-                gfx.setCursor(216, 216);
-                gfx.print(F("COMPLETE"));
-
+                drawButtonComplete();
                 _updated |= CALIBRATION_FINISHED;
             }
 
