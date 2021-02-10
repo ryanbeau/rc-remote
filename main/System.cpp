@@ -26,14 +26,14 @@ void update() {
     }
 }
 
-void onGamepadEvent(GamepadEvent* e) {
+void onGamepadEvent(GamepadEvent& e) {
     if (screen) screen->onGamepadEvent(e);
 }
 
-void onPayloadEvent(Payload* p) {
+void onPayloadEvent(Payload& p) {
     if (screen) screen->onPayloadEvent(p);
 }
 
-void onTouchEvent(TouchPoint* p) {
+void onTouchEvent(TouchPoint& p) {
     if (screen) screen->onTouchEvent(p);
 }

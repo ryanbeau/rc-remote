@@ -3,7 +3,7 @@
 class AnalogCalibration : public Screen {
    public:
     void update(uint8_t ms) override;
-    void onTouchEvent(TouchPoint* point) override;
+    void onTouchEvent(TouchPoint& point) override;
 
    private:
     int8_t _joystick[2][2] {{0, 0}, {0, 0}};

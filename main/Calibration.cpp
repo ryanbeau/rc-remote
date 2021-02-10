@@ -89,7 +89,7 @@ void AnalogCalibration::updateJoystick(uint8_t joy, uint8_t axis, int8_t percent
             if (percent <= 0) {
                 if (_joystick[joy][axis] >= 0) {
                     gfx.fillRect(x + 48, y + 61, 2, 36, bg);        // erase Bottom step
-                    drawPercent(x + 37, y + 101, ALIGN_CENTER, 0);  // draw Bottom% as 0
+                    drawPercent(x + 39, y + 101, ALIGN_CENTER, 0);  // draw Bottom% as 0
                 }
 
                 if (percent != 0) {
@@ -97,14 +97,14 @@ void AnalogCalibration::updateJoystick(uint8_t joy, uint8_t axis, int8_t percent
                     if (percent > _joystick[joy][axis]) {
                         gfx.fillRect(x + 48, y + 1, 2, (36 + step), bg);  // erase Up step
                     }
-                    drawPercent(x + 37, y - 10, ALIGN_CENTER, -percent);
+                    drawPercent(x + 39, y - 10, ALIGN_CENTER, -percent);
                 }
             }
 
             if (percent >= 0) {
                 if (_joystick[joy][axis] <= 0) {
                     gfx.fillRect(x + 48, y + 1, 2, 36, bg);        // erase Top step
-                    drawPercent(x + 37, y - 10, ALIGN_CENTER, 0);  // draw Top% as 0
+                    drawPercent(x + 39, y - 10, ALIGN_CENTER, 0);  // draw Top% as 0
                 }
 
                 if (percent != 0) {
@@ -112,7 +112,7 @@ void AnalogCalibration::updateJoystick(uint8_t joy, uint8_t axis, int8_t percent
                     if (percent < _joystick[joy][axis]) {
                         gfx.fillRect(x + 48, y + 61 + step, 2, (36 - step), bg);  // erase Bottom step
                     }
-                    drawPercent(x + 37, y + 101, ALIGN_CENTER, percent);
+                    drawPercent(x + 39, y + 101, ALIGN_CENTER, percent);
                 }
             }
         }
@@ -133,10 +133,10 @@ void AnalogCalibration::updateTrigger(uint8_t trigger, uint8_t percent) {
             if (percent < _trigger[trigger]) {
                 gfx.fillRect(x, 103, 2, (60 - step), bg);
             }
-            drawPercent(x - 11, 92, ALIGN_CENTER, percent);
+            drawPercent(x - 9, 92, ALIGN_CENTER, percent);
         } else {
             gfx.fillRect(x, 103, 2, 60, bg);
-            drawPercent(x - 11, 92, ALIGN_CENTER, 0);
+            drawPercent(x - 9, 92, ALIGN_CENTER, 0);
         }
 
         _trigger[trigger] = percent;
@@ -153,10 +153,10 @@ void AnalogCalibration::update(uint8_t ms) {
             gfx.setCursor(174, 17);
             gfx.print(F("Controller Calibration"));
 
-            gfx.setCursor(147, 200);
+            gfx.setCursor(150, 200);
             gfx.print(F("Ensure the control sticks are"));
-            gfx.setCursor(147, 212);
-            gfx.print(F("centered before pressing Start."));
+            gfx.setCursor(150, 212);
+            gfx.print(F("centered before pressing Start"));
 
             gfx.drawRoundRect(170, 70, 140, 75, 8, white);  // controller
             gfx.drawCircle(190, 106, 10, white);            // left joy
@@ -209,8 +209,8 @@ void AnalogCalibration::update(uint8_t ms) {
             leftJoyY.reclampMinMax();
             rightJoyX.reclampMinMax();
             rightJoyY.reclampMinMax();
-            leftTrigger.reclampMax();
-            rightTrigger.reclampMax();
+            leftTrigger.reclampMinMax();
+            rightTrigger.reclampMinMax();
 
             if (!(_updated & CALIBRATION_FINISHED) && isAnalogCalibrated()) {
                 gfx.fillRoundRect(157, 200, 166, 40, 8, white);
@@ -248,9 +248,7 @@ void AnalogCalibration::update(uint8_t ms) {
                         gfx.drawRect(x + (i * 60), y + 47, 38, 4, midgray);
                     }
 
-                    if (_updated & CALIBRATION_ON_START) {
-                        gfx.drawRect(219 + (j * 38), y, 4, 62, midgray);
-                    }
+                    gfx.drawRect(219 + (j * 38), y, 4, 62, midgray);
                 }
 
                 updateJoystick(j, X_AXIS, j == 0 ? leftJoyX.getPercentValue() : rightJoyX.getPercentValue());
@@ -266,20 +264,15 @@ void AnalogCalibration::update(uint8_t ms) {
     }
 }
 
-void AnalogCalibration::onTouchEvent(TouchPoint* point) {
+void AnalogCalibration::onTouchEvent(TouchPoint& point) {
     // set analog base, min & max
-    if (!(_updated & CALIBRATION_RUNNING) && point->x >= 157 && point->x <= 323 && point->y >= 260 && point->y <= 300) {
-        leftJoyX.setHomeMinMax(leftJoyX.value);
-        leftJoyY.setHomeMinMax(leftJoyY.value);
-        rightJoyX.setHomeMinMax(rightJoyX.value);
-        rightJoyY.setHomeMinMax(rightJoyY.value);
-        leftTrigger.setHomeMinMax(leftTrigger.value);
-        rightTrigger.setHomeMinMax(rightTrigger.value);
-
+    if (!(_updated & CALIBRATION_RUNNING) && point.x >= 157 && point.x <= 323 && point.y >= 260 && point.y <= 300) {
+        analogInputsResample();
         _updated = CALIBRATION_ON_START | CALIBRATION_RUNNING;
     }
 
-    if (_updated & CALIBRATION_FINISHED && point->x >= 157 && point->x <= 157 + 166 && point->y >= 200 && point->y <= 200 + 40) {
-        // complete calibration
+    if (_updated & CALIBRATION_FINISHED && point.x >= 157 && point.x <= 157 + 166 && point.y >= 200 && point.y <= 200 + 40) {
+        saveEEPROM();
+        _updated &= ~(CALIBRATION_FINISHED | CALIBRATION_RUNNING);
     }
 }

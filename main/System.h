@@ -7,9 +7,9 @@ class Screen {
    public:
     virtual ~Screen() {}
     virtual void update(uint8_t ms) = 0;
-    virtual void onGamepadEvent(GamepadEvent* event) {}
-    virtual void onPayloadEvent(Payload* payload) {}
-    virtual void onTouchEvent(TouchPoint* point) {}
+    virtual void onGamepadEvent(GamepadEvent& event) {}
+    virtual void onPayloadEvent(Payload& payload) {}
+    virtual void onTouchEvent(TouchPoint& point) {}
 
    protected:
     uint8_t _updated = 255;
@@ -17,8 +17,8 @@ class Screen {
 
 extern void setScreen(Screen* s);
 extern void update();
-extern void onGamepadEvent(GamepadEvent* e);
-extern void onPayloadEvent(Payload* p);
-extern void onTouchEvent(TouchPoint* p);
+extern void onGamepadEvent(GamepadEvent& e);
+extern void onPayloadEvent(Payload& p);
+extern void onTouchEvent(TouchPoint& p);
 
 #endif

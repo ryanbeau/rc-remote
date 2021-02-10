@@ -2,9 +2,17 @@
 
 #include <Adafruit_MCP23017.h>
 #include <Adafruit_STMPE610.h>
+#include <EEPROM.h>
 #include <RF24.h>
 
 #include "System.h"
+
+#define EEPROM_SIZE 512
+#define EEPROM_VERSION 1
+#define EEPROM_VERSION_ADDRESS 0
+#define EEPROM_ANALOG_ADDRESS 1
+#define EEPROM_ANALOG_COUNT 6
+#define EEPROM_ANALOG_BYTES 8
 
 #define TOUCH_TASK_BIT 0x01
 #define RF_TASK_BIT 0x02
@@ -13,11 +21,13 @@
 #define DIGITAL_AMT 12
 #define ANALOG_AMT 7
 
+#define ANALOG_TASK_DELAY_MS 50
+
 #define ANALOG_JOY_MIN 250
 #define ANALOG_JOY_MAX 150
-
 #define ANALOG_TRIGGER_MIN 200
 #define ANALOG_TRIGGER_MAX 350
+
 #define ANALOG_MIN 0
 #define ANALOG_MID 2047
 #define ANALOG_MAX 4095
@@ -38,7 +48,7 @@ Adafruit_MCP23017 mcp;
 xQueueHandle digitalInterruptQueue = NULL;
 static TaskHandle_t inputHandlingTask;
 
-AnalogMap voltage = {eVoltage, ANALOG_MIN, ANALOG_MIN, ANALOG_MIN, ANALOG_MAX, false};
+AnalogMap voltage = {eVoltage, 2650, 1700, 1700, 2650, false};
 AnalogMap leftJoyX = {eLeft_JoyX, ANALOG_MID, ANALOG_MID, ANALOG_MIN, ANALOG_MAX, false};
 AnalogMap leftJoyY = {eLeft_JoyY, ANALOG_MID, ANALOG_MID, ANALOG_MIN, ANALOG_MAX, true};
 AnalogMap rightJoyX = {eRight_JoyX, ANALOG_MID, ANALOG_MID, ANALOG_MIN, ANALOG_MAX, true};
@@ -62,13 +72,13 @@ DigitalMap digitalMap[DIGITAL_AMT] = {
 };
 
 AnalogMap* analogMap[ANALOG_AMT] = {
-    &voltage,
     &leftJoyX,
     &leftJoyY,
     &rightJoyX,
     &rightJoyY,
     &leftTrigger,
     &rightTrigger,
+    &voltage, // must be last element of array
 };
 
 void AnalogMap::setHomeMinMax(uint16_t val) {
@@ -81,12 +91,6 @@ void AnalogMap::reclampMinMax() {
     if (min > value) {
         min = value;
     }
-    if (max < value) {
-        max = value;
-    }
-}
-
-void AnalogMap::reclampMax() {
     if (max < value) {
         max = value;
     }
@@ -149,7 +153,7 @@ void handleDigitalEvent(DigitalMap* map) {
     Serial.print(F(" value:"));
     Serial.println(map->value);
 
-    onGamepadEvent(&ev);
+    onGamepadEvent(ev);
 }
 
 void IRAM_ATTR isrDigitalHandler(void* arg) {
@@ -177,7 +181,7 @@ void IRAM_ATTR isrMCPHandler() {
 }
 
 void inputAnalogTask(void* arg) {
-    static const TickType_t xDelay = 50 / portTICK_PERIOD_MS;  // 50ms
+    static const TickType_t xDelay = ANALOG_TASK_DELAY_MS / portTICK_PERIOD_MS;  // 50ms
     static const float max = 255.0f;
 
     while (1) {
@@ -220,10 +224,6 @@ void inputTask(void* arg) {
     TouchPoint touchPoint;
     uint8_t pipe;
 
-    if (!touch.begin()) {
-        Serial.println(F("Touch.begin() failed"));
-    }
-
     while (1) {
         // wait to be notified of an interrupt
         xResult = xTaskNotifyWait(ULONG_MAX, ULONG_MAX, &notifiedValue, portMAX_DELAY);
@@ -237,16 +237,12 @@ void inputTask(void* arg) {
                     touchPoint.x = map(point.y, TS_MINX, TS_MAXX, 0, gfx.width());
                     touchPoint.y = map(point.x, TS_MINY, TS_MAXY, gfx.height(), 0);
 
-                    Serial.print(F("x:"));
-                    Serial.print(point.x);
-                    Serial.print(F("->"));
+                    Serial.print(F("touch x:"));
                     Serial.print(touchPoint.x);
                     Serial.print(F(" y:"));
-                    Serial.print(point.y);
-                    Serial.print(F("->"));
                     Serial.println(touchPoint.y);
 
-                    onTouchEvent(&touchPoint);
+                    onTouchEvent(touchPoint);
                 }
             }
 
@@ -256,7 +252,7 @@ void inputTask(void* arg) {
                     Payload payload;
                     radio.read(&payload, sizeof(payload));
 
-                    onPayloadEvent(&payload);
+                    onPayloadEvent(payload);
                 }
             }
 
@@ -280,6 +276,83 @@ void inputTask(void* arg) {
     }
 }
 
+union AnalogMemory {
+    struct __attribute__((__packed__)) {
+        uint8_t pin;
+        bool inverted;
+        uint16_t home;
+        uint16_t min;
+        uint16_t max;
+    } inputs[EEPROM_ANALOG_COUNT];
+    byte value[EEPROM_ANALOG_BYTES * EEPROM_ANALOG_COUNT];
+};
+
+void loadEEPROM() {
+    uint8_t version = EEPROM.read(EEPROM_VERSION_ADDRESS);
+
+    Serial.print(F("EEPROM: "));
+    Serial.println(version);
+
+    if (version == 1) {
+        AnalogMemory storedAnalog;
+
+        EEPROM.readBytes(EEPROM_ANALOG_ADDRESS, &storedAnalog.value, EEPROM_ANALOG_BYTES * EEPROM_ANALOG_COUNT);
+
+        for (uint8_t i = 0; i < EEPROM_ANALOG_COUNT; i++) {
+            for (uint8_t j = 0; j < ANALOG_AMT; j++) {
+                if (analogMap[j]->inputPin == storedAnalog.inputs[i].pin) {
+                    analogMap[j]->inverted = storedAnalog.inputs[i].inverted;
+                    analogMap[j]->home = storedAnalog.inputs[i].home;
+                    analogMap[j]->min = storedAnalog.inputs[i].min;
+                    analogMap[j]->max = storedAnalog.inputs[i].max;
+
+                    Serial.print(F("pin:"));
+                    Serial.print(storedAnalog.inputs[i].pin);
+                    Serial.print(F(",inv:"));
+                    Serial.print(storedAnalog.inputs[i].inverted);
+                    Serial.print(F(",home:"));
+                    Serial.print(storedAnalog.inputs[i].home);
+                    Serial.print(F(",min:"));
+                    Serial.print(storedAnalog.inputs[i].min);
+                    Serial.print(F(",max:"));
+                    Serial.println(storedAnalog.inputs[i].max);
+                    break;
+                }
+            }
+        }
+    }
+}
+
+void saveEEPROM() {
+    AnalogMemory storedAnalog = {
+        inputs: {
+            {pin: leftJoyX.inputPin, inverted: leftJoyX.inverted, home: leftJoyX.home, min: leftJoyX.min, max: leftJoyX.max},
+            {pin: leftJoyY.inputPin, inverted: leftJoyY.inverted, home: leftJoyY.home, min: leftJoyY.min, max: leftJoyY.max},
+            {pin: rightJoyX.inputPin, inverted: rightJoyX.inverted, home: rightJoyX.home, min: rightJoyX.min, max: rightJoyX.max},
+            {pin: rightJoyY.inputPin, inverted: rightJoyY.inverted, home: rightJoyY.home, min: rightJoyY.min, max: rightJoyY.max},
+            {pin: leftTrigger.inputPin, inverted: leftTrigger.inverted, home: leftTrigger.home, min: leftTrigger.min, max: leftTrigger.max},
+            {pin: rightTrigger.inputPin, inverted: rightTrigger.inverted, home: rightTrigger.home, min: rightTrigger.min, max: rightTrigger.max},
+        }
+    };
+
+    EEPROM.write(EEPROM_VERSION_ADDRESS, EEPROM_VERSION);
+    EEPROM.writeBytes(EEPROM_ANALOG_ADDRESS, &storedAnalog.value, EEPROM_ANALOG_BYTES * EEPROM_ANALOG_COUNT);
+    EEPROM.commit();
+
+    for (uint8_t i = 0; i < EEPROM_ANALOG_COUNT; i++) {
+        Serial.print(F("pin:"));
+        Serial.print(storedAnalog.inputs[i].pin);
+        Serial.print(F(",inv:"));
+        Serial.print(storedAnalog.inputs[i].inverted);
+        Serial.print(F(",home:"));
+        Serial.print(storedAnalog.inputs[i].home);
+        Serial.print(F(",min:"));
+        Serial.print(storedAnalog.inputs[i].min);
+        Serial.print(F(",max:"));
+        Serial.println(storedAnalog.inputs[i].max);
+    }
+}
+
 void initIO() {
     static bool initialized = false;
 
@@ -292,6 +365,10 @@ void initIO() {
         gfx.begin();
         gfx.setRotation(1);
         gfx.invertDisplay(false); //prevent randomly inverted tft when power is flickered off/on
+
+        if (!touch.begin()) {
+            Serial.println(F("Touch.begin() failed"));
+        }
 
         // radio - RF24
         radio.begin();
@@ -332,7 +409,35 @@ void initIO() {
         xTaskCreatePinnedToCore(&inputDigitalTask, "digitalIO", 1500, NULL, 11, NULL, IO_CORE);
         xTaskCreatePinnedToCore(&inputAnalogTask, "analogIO", 1500, NULL, 12, NULL, IO_CORE);
 
+        EEPROM.begin(EEPROM_SIZE);
+
+        loadEEPROM();
+
         initialized = true;
+    }
+}
+
+void analogInputsResample() {
+    const TickType_t xDelay = ANALOG_TASK_DELAY_MS / portTICK_PERIOD_MS;
+    const uint8_t samples = 16; // max for uint16 -> 16*4095=65520 [uint16: 0 to 65,535]
+    uint16_t values[samples][ANALOG_AMT - 1];
+
+    // get 10x sets of inputs for averaging
+    for (uint8_t i = 0; i < samples; i++) {
+        vTaskDelay(xDelay);
+        for (uint8_t j = 0; j < ANALOG_AMT - 1; j++) {
+            values[i][j] = analogMap[j]->value;
+        }
+    }
+
+    // average the inputs
+    uint16_t value;
+    for (uint8_t j = 0; j < ANALOG_AMT - 1; j++) {
+        value = 0;
+        for (uint8_t i = 0; i < samples; i++) {
+            value += values[i][j];
+        }
+        analogMap[j]->setHomeMinMax(value / samples);
     }
 }
 

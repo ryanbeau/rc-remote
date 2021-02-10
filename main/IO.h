@@ -10,7 +10,6 @@
 #define RGB565(r, g, b) (((r & 0xf8) << 8) | ((g & 0xfc) << 3) | (b >> 3))
 
 enum eGamepadAnalog {
-    // analog
     eVoltage = VOLTAGE_PIN,
     eLeft_JoyX = L_JOY_X_PIN,
     eLeft_JoyY = L_JOY_Y_PIN,
@@ -54,9 +53,6 @@ struct AnalogMap {
     // reclampMinMax clamps the min and max with value if below min or above max.
     void reclampMinMax();
 
-    // reclampMax clamps the max with value if above max.
-    void reclampMax();
-
     // getMapValue gets the mapped value from base, min, max.
     int16_t getMapValue(int16_t toMin, int16_t toMax);
 
@@ -91,7 +87,13 @@ extern void initIO();
 // getAnalogMap returns the specific AnalogMap.
 extern AnalogMap* getAnalogMap(eGamepadAnalog gamepadAnalog);
 
+// analogInputsResample samples and averages 10x analogRead values to set for home, min & max.
+extern void analogInputsResample();
+
 // isAnalogCalibrated returns whether the analog inputs are calibrated.
 extern bool isAnalogCalibrated();
+
+// saveEEPROM stores the values into EEPROM.
+extern void saveEEPROM();
 
 #endif
